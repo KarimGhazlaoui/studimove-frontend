@@ -1,22 +1,156 @@
-.hover-card {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+/* Styles personnalisés StudiMove Hotel */
+
+.stats-card {
+  transition: transform 0.2s ease-in-out;
 }
 
-.hover-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+.stats-card:hover {
+  transform: translateY(-5px);
 }
 
-.dropdown-toggle::after {
-  display: none;
+.hotel-card, .event-card {
+  transition: box-shadow 0.3s ease;
 }
 
-.card {
-  transition: all 0.2s ease-in-out;
+.hotel-card:hover, .event-card:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-.hotel-image {
-  height: 200px;
-  object-fit: cover;
-  width: 100%;
+.stat-item {
+  padding: 10px;
+}
+
+.activity-item {
+  padding: 8px 0;
+}
+
+.activity-icon {
+  width: 30px;
+  text-align: center;
+}
+
+.client-avatar {
+  width: 24px;
+  text-align: center;
+}
+
+.room-card {
+  transition: all 0.3s ease;
+}
+
+.room-card:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.trends-chart .progress {
+  height: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.assignment-results {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.client-row {
+  transition: background-color 0.2s ease;
+}
+
+.client-row:hover {
+  background-color: rgba(0,123,255,0.05);
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.btn-group .btn {
+  border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+  border-top-left-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
+}
+
+.btn-group .btn:last-child {
+  border-top-right-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+}
+
+.table-responsive {
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.amenities .badge {
+  font-size: 0.75em;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-card .card-body {
+    padding: 1rem;
+  }
+  
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .btn-group .btn {
+    border-radius: 0.375rem !important;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .hotel-card, .event-card, .stats-card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+  }
 }

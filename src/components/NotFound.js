@@ -1,15 +1,15 @@
 import React from 'react';
-import { Container } from 'react-bootstrap';
+import { Container, Alert, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaHome } from 'react-icons/fa';
+import { FaHome, FaExclamationTriangle } from 'react-icons/fa';
 
 const NotFound = () => {
   return (
     <Container className="py-5 text-center">
-      <h1 className="display-1">404</h1>
-      <h2>Page non trouvée</h2>
-      <p className="text-muted mb-4">
-        La page que vous recherchez n'existe pas.
+      <FaExclamationTriangle size={64} className="text-warning mb-4" />
+      <h1>404 - Page non trouvée</h1>
+      <p className="lead text-muted mb-4">
+        La page que vous recherchez n'existe pas ou a été déplacée.
       </p>
       <Link to="/" className="btn btn-primary">
         <FaHome className="me-2" />

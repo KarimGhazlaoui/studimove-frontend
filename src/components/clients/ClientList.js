@@ -1,276 +1,180 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Button, Table, Alert, Form, InputGroup, Badge, Modal } from 'react-bootstrap';
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaFileImport, FaEye, FaUsers } from 'react-icons/fa';
-import { clientService } from '../../services/api';
+import React, { useState, useEffect } from 'react';
+import { Container, Table, Button, Alert, Spinner, Badge } from 'react-bootstrap';
+import { FaUsers, FaPlus, FaEdit, FaTrash, FaFileImport } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const ClientList = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState(null);
-
-  const fetchClients = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = {};
-      if (searchTerm) params.search = searchTerm;
-      if (typeFilter !== 'all') params.type = typeFilter;
-      if (statusFilter !== 'all') params.status = statusFilter;
-
-      const response = await clientService.getAllClients(params);
-      setClients(response.data);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement des clients');
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, typeFilter, statusFilter]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+  }, []);
 
-  const handleDelete = async () => {
+  const fetchClients = async () => {
     try {
-      await clientService.deleteClient(clientToDelete._id);
-      toast.success('Client supprimé avec succès');
-      fetchClients();
-      setShowDeleteModal(false);
-      setClientToDelete(null);
+      setLoading(true);
+      const response = await fetch('/api/clients');
+      const data = await response.json();
+      
+      if (data.success) {
+        setClients(data.data || []);
+      } else {
+        setError(data.message || 'Erreur lors du chargement des clients');
+      }
     } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la suppression');
+      console.error('Erreur fetch clients:', error);
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDelete = async (clientId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Client supprimé avec succès');
+        fetchClients();
+      } else {
+        toast.error('Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur de connexion');
+    }
+  };
+
+  const getClientTypeBadge = (type) => {
+    const variants = {
+      'Solo': 'secondary',
+      'Groupe': 'info',
+      'VIP': 'warning',
+      'Staff': 'primary'
+    };
+    return <Badge bg={variants[type] || 'secondary'}>{type}</Badge>;
   };
 
   const getStatusBadge = (status) => {
     const variants = {
       'En attente': 'warning',
-      'Assigné': 'info',
-      'Confirmé': 'success'
+      'Assigné': 'success',
+      'Confirmé': 'primary'
     };
     return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
   };
 
-  const getTypeBadge = (type, groupName) => {
-    if (type === 'Solo') {
-      return <Badge bg="primary">Solo</Badge>;
-    } else {
-      return (
-        <div>
-          <Badge bg="success" className="me-1">Groupe</Badge>
-          {groupName && (
-            <Badge bg="info">{groupName}</Badge>
-          )}
-        </div>
-      );
-    }
-  };
-
   if (loading) {
     return (
-      <Container className="mt-4">
-        <div className="text-center">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Chargement...</span>
-          </div>
-        </div>
+      <Container className="text-center py-5">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Chargement...</span>
+        </Spinner>
       </Container>
     );
   }
 
   return (
-    <Container className="mt-4">
-      <Row className="mb-4">
-        <Col>
-          <h1 className="mb-3">
-            <FaUsers className="me-2" />
-            Gestion des Clients
-          </h1>
-          
-          {/* Filtres et recherche */}
-          <Card className="mb-4">
-            <Card.Body>
-              <Row>
-                <Col md={6}>
-                  <InputGroup>
-                    <InputGroup.Text>
-                      <FaSearch />
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Rechercher par nom, prénom, téléphone ou groupe..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </InputGroup>
-                </Col>
-                <Col md={3}>
-                  <Form.Select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                  >
-                    <option value="all">Tous les types</option>
-                    <option value="Solo">Solo</option>
-                    <option value="Groupe">Groupe</option>
-                  </Form.Select>
-                </Col>
-                <Col md={3}>
-                  <Form.Select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <option value="all">Tous les statuts</option>
-                    <option value="En attente">En attente</option>
-                    <option value="Assigné">Assigné</option>
-                    <option value="Confirmé">Confirmé</option>
-                  </Form.Select>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-
-          {/* Actions */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <Button 
-                variant="primary" 
-                href="/clients/add"
-                className="me-2"
-              >
-                <FaPlus className="me-1" />
-                Nouveau Client
-              </Button>
-              <Button 
-                variant="success" 
-                href="/clients/import"
-              >
-                <FaFileImport className="me-1" />
-                Importer CSV
-              </Button>
-            </div>
-            <Alert variant="info" className="mb-0">
-              <strong>{clients.length}</strong> client{clients.length > 1 ? 's' : ''} trouvé{clients.length > 1 ? 's' : ''}
-            </Alert>
-          </div>
-
-          {/* Liste des clients */}
-          <Card>
-            <Card.Body className="p-0">
-              {clients.length === 0 ? (
-                <div className="text-center p-4">
-                  <p className="mb-0">Aucun client trouvé</p>
-                </div>
-              ) : (
-                <Table responsive hover className="mb-0">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>Nom Complet</th>
-                      <th>Téléphone</th>
-                      <th>Type / Groupe</th>
-                      <th>Taille</th>
-                      <th>Statut</th>
-                      <th>Hôtel Assigné</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clients.map((client) => (
-                      <tr key={client._id}>
-                        <td>
-                          <strong>{client.firstName} {client.lastName}</strong>
-                        </td>
-                        <td>{client.phone}</td>
-                        <td>{getTypeBadge(client.type, client.groupName)}</td>
-                        <td>
-                          <Badge bg="secondary">{client.groupSize}</Badge>
-                        </td>
-                        <td>{getStatusBadge(client.status)}</td>
-                        <td>
-                          {client.assignedHotel ? (
-                            <span>
-                              {client.assignedHotel.name}
-                              {client.assignedRoom && ` - ${client.assignedRoom}`}
-                            </span>
-                          ) : (
-                            <Badge bg="light" text="dark">Non assigné</Badge>
-                          )}
-                        </td>
-                        <td>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            href={`/clients/${client._id}`}
-                            className="me-1"
-                            title="Voir détail"
-                          >
-                            <FaEye />
-                          </Button>
-                          <Button
-                            variant="outline-warning"
-                            size="sm"
-                            href={`/clients/edit/${client._id}`}
-                            className="me-1"
-                            title="Modifier"
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => {
-                              setClientToDelete(client);
-                              setShowDeleteModal(true);
-                            }}
-                            title="Supprimer"
-                          >
-                            <FaTrash />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Modal de confirmation de suppression */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirmer la suppression</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Êtes-vous sûr de vouloir supprimer le client{' '}
-          <strong>
-            {clientToDelete?.firstName} {clientToDelete?.lastName}
-          </strong> ?
-          {clientToDelete?.groupName && (
-            <div className="mt-2">
-              <small className="text-muted">
-                Groupe: <strong>{clientToDelete.groupName}</strong>
-              </small>
-            </div>
-          )}
-          <br />
-          <small className="text-danger">Cette action est irréversible.</small>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Annuler
+    <Container className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+          <FaUsers className="me-2" />
+          Liste des Clients ({clients.length})
+        </h2>
+        <div>
+          <Button variant="outline-success" className="me-2">
+            <FaFileImport className="me-2" />
+            Importer CSV
           </Button>
-          <Button variant="danger" onClick={handleDelete}>
-            Supprimer
+          <Button variant="primary">
+            <FaPlus className="me-2" />
+            Ajouter un Client
           </Button>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="danger" className="mb-4">
+          {error}
+        </Alert>
+      )}
+
+      {clients.length === 0 ? (
+        <Alert variant="info" className="text-center">
+          <FaUsers size={48} className="mb-3" />
+          <h5>Aucun client trouvé</h5>
+          <p>Commencez par ajouter vos premiers clients.</p>
+          <Button variant="primary">
+            <FaPlus className="me-2" />
+            Ajouter un Client
+          </Button>
+        </Alert>
+      ) : (
+        <Table responsive striped hover>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Téléphone</th>
+              <th>Type</th>
+              <th>Groupe</th>
+              <th>Statut</th>
+              <th>Hôtel assigné</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map((client) => (
+              <tr key={client._id}>
+                <td>
+                  <strong>{client.firstName} {client.lastName}</strong>
+                </td>
+                <td>{client.phone}</td>
+                <td>{getClientTypeBadge(client.type)}</td>
+                <td>
+                  {client.groupName ? (
+                    <span>
+                      {client.groupName}
+                      <small className="text-muted"> ({client.groupSize})</small>
+                    </span>
+                  ) : (
+                    <span className="text-muted">-</span>
+                  )}
+                </td>
+                <td>{getStatusBadge(client.status)}</td>
+                <td>
+                  {client.assignedHotel ? (
+                    <span className="text-success">{client.assignedHotel.name}</span>
+                  ) : (
+                    <span className="text-muted">Non assigné</span>
+                  )}
+                </td>
+                <td>
+                  <div className="btn-group btn-group-sm">
+                    <Button variant="outline-warning" title="Modifier">
+                      <FaEdit />
+                    </Button>
+                    <Button 
+                      variant="outline-danger" 
+                      onClick={() => handleDelete(client._id)}
+                      title="Supprimer"
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
     </Container>
   );
 };

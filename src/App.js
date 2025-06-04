@@ -1,70 +1,87 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// Components
+// Layout
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import Dashboard from './components/Dashboard';
+
+// Pages
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
 import HotelList from './components/hotels/HotelList';
-import ClientList from './components/clients/ClientList';
-import NotFound from './components/NotFound';
+import HotelDetail from './pages/HotelDetail';
+import HotelForm from './pages/HotelForm';
+import ClientList from './pages/ClientList';
+import ClientForm from './pages/ClientForm';
+import AssignmentPage from './pages/AssignmentPage';
+import EventList from './pages/EventList';
+import EventForm from './pages/EventForm';
+import ProfilePage from './pages/ProfilePage';
+import NotFound from './pages/NotFound';
 
-// Version temporaire simplifiée des composants manquants
-const HotelDetail = () => (
-  <div className="container mt-4">
-    <h1>Détail de l'hôtel</h1>
-    <p>Page en construction...</p>
-  </div>
-);
-
-const HotelForm = () => (
-  <div className="container mt-4">
-    <h1>Formulaire d'hôtel</h1>
-    <p>Page en construction...</p>
-  </div>
-);
-
-const Login = () => (
-  <div className="container mt-4">
-    <h1>Page de connexion</h1>
-    <p>Page en construction...</p>
-  </div>
-);
+// Styles
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-toastify/dist/ReactToastify.css';
+import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="d-flex flex-column min-vh-100">
-        <Header />
-        <main className="py-3 flex-grow-1">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/hotels" element={<HotelList />} />
-            <Route path="/hotels/:id" element={<HotelDetail />} />
-            <Route path="/hotels/add" element={<HotelForm />} />
-            <Route path="/hotels/edit/:id" element={<HotelForm />} />
-            <Route path="/clients" element={<ClientList />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-        <Footer />
-        <ToastContainer 
-          position="bottom-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="d-flex flex-column min-vh-100">
+          <Header />
+          <main className="py-3 flex-grow-1">
+            <Routes>
+              {/* Routes publiques */}
+              <Route path="/login" element={<Login />} />
+              
+              {/* Routes protégées */}
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              
+              {/* Événements */}
+              <Route path="/events" element={<ProtectedRoute><EventList /></ProtectedRoute>} />
+              <Route path="/events/new" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
+              <Route path="/events/:id/edit" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
+              
+              {/* Hôtels */}
+              <Route path="/hotels" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
+              <Route path="/hotels/new" element={<ProtectedRoute><HotelForm /></ProtectedRoute>} />
+              <Route path="/hotels/:id" element={<ProtectedRoute><HotelDetail /></ProtectedRoute>} />
+              <Route path="/hotels/:id/edit" element={<ProtectedRoute><HotelForm /></ProtectedRoute>} />
+              
+              {/* Clients */}
+              <Route path="/clients" element={<ProtectedRoute><ClientList /></ProtectedRoute>} />
+              <Route path="/clients/new" element={<ProtectedRoute><ClientForm /></ProtectedRoute>} />
+              <Route path="/clients/:id/edit" element={<ProtectedRoute><ClientForm /></ProtectedRoute>} />
+              
+              {/* Assignations */}
+              <Route path="/assignments/:eventId" element={<ProtectedRoute><AssignmentPage /></ProtectedRoute>} />
+              
+              {/* Profil */}
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+          <Footer />
+          <ToastContainer 
+            position="bottom-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+          />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
