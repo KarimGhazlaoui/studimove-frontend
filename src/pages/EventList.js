@@ -1,31 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlus, FaCalendarAlt, FaUsers, FaBed, FaSearch, FaEdit, FaEye } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaMapMarkerAlt, FaUsers, FaHotel, FaEdit } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API_BASE_URL from '../config/api';
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
-  const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  useEffect(() => {
-    filterEvents();
-  }, [events, searchTerm, statusFilter]);
+  // ✅ VERSION DEBUG - Remplacez la fonction getEventStats par ceci :
+  const getEventStats = async (eventId) => {
+    try {
+      console.log(`🔍 Récupération des stats pour événement: ${eventId}`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/assignments/event/${eventId}`);
+      const data = await response.json();
+      
+      console.log(`📊 Réponse API assignments:`, data);
+      
+      if (data.success) {
+        // ✅ Gestion de différents formats de données
+        let assignments = [];
+        
+        if (Array.isArray(data.data)) {
+          assignments = data.data;
+          console.log(`✅ Format 1: data.data est un array de ${assignments.length} éléments`);
+        } else if (data.data && Array.isArray(data.data.assignments)) {
+          assignments = data.data.assignments;
+          console.log(`✅ Format 2: data.data.assignments est un array de ${assignments.length} éléments`);
+        } else if (data.data && Array.isArray(data.data.hotels)) {
+          assignments = data.data.hotels;
+          console.log(`✅ Format 3: data.data.hotels est un array de ${assignments.length} éléments`);
+        } else {
+          console.log(`❌ Format non reconnu:`, typeof data.data, data.data);
+          return { totalHotels: 0, totalRooms: 0, totalCapacity: 0 };
+        }
+        
+        console.log(`📋 Assignations trouvées:`, assignments);
+        
+        const stats = {
+          totalHotels: assignments.length,
+          totalRooms: assignments.reduce((sum, assignment) => {
+            const roomCount = assignment.availableRooms?.reduce((roomSum, room) => 
+              roomSum + (room.quantity || 0), 0) || 0;
+            return sum + roomCount;
+          }, 0),
+          totalCapacity: assignments.reduce((sum, assignment) => {
+            const capacity = assignment.availableRooms?.reduce((capSum, room) => 
+              capSum + ((room.quantity || 0) * (room.bedCount || 0)), 0) || 0;
+            return sum + capacity;
+          }, 0)
+        };
+        
+        console.log(`📈 Stats calculées:`, stats);
+        return stats;
+      } else {
+        console.log(`❌ API retourné success: false`, data);
+      }
+    } catch (error) {
+      console.error(`❌ Erreur stats événement ${eventId}:`, error);
+    }
+    
+    return { totalHotels: 0, totalRooms: 0, totalCapacity: 0 };
+  };
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('/api/events');
+      const response = await fetch(`${API_BASE_URL}/api/events`);
       const data = await response.json();
       
       if (data.success) {
-        setEvents(data.data);
+        // ✅ Enrichir chaque événement avec ses vraies stats
+        const eventsWithStats = await Promise.all(
+          data.data.map(async (event) => {
+            const stats = await getEventStats(event._id);
+            return {
+              ...event,
+              // ✅ Remplacer par les vraies stats
+              totalHotels: stats.totalHotels,
+              totalRooms: stats.totalRooms,
+              totalCapacity: stats.totalCapacity
+            };
+          })
+        );
+        
+        setEvents(eventsWithStats);
       } else {
         toast.error('Erreur lors du chargement des événements');
       }
@@ -37,40 +101,49 @@ const EventList = () => {
     }
   };
 
-  const filterEvents = () => {
-    let filtered = events;
-
-    if (searchTerm) {
-      filtered = filtered.filter(event => 
-        event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.location.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(event => event.status === statusFilter);
-    }
-
-    setFilteredEvents(filtered);
-  };
-
   const getStatusBadge = (status) => {
-    const variants = {
-      'draft': 'secondary',
-      'active': 'success',
-      'completed': 'primary',
-      'cancelled': 'danger'
+    const statusConfig = {
+      'Planification': { bg: 'warning', text: 'dark' },
+      'Active': { bg: 'success', text: 'white' },
+      'Terminé': { bg: 'secondary', text: 'white' },
+      'Annulé': { bg: 'danger', text: 'white' }
     };
-    
-    const labels = {
-      'draft': 'Brouillon',
-      'active': 'Actif',
-      'completed': 'Terminé',
-      'cancelled': 'Annulé'
-    };
-
-    return <Badge bg={variants[status] || 'secondary'}>{labels[status] || status}</Badge>;
+    return statusConfig[status] || { bg: 'secondary', text: 'white' };
   };
+
+  const formatParticipants = (event) => {
+    const current = event.currentParticipants || 0;
+    const max = event.maxParticipants;
+    
+    if (max) {
+      const percentage = current > 0 ? Math.round((current / max) * 100) : 0;
+      return `${current} / ${max} (${percentage}%)`;
+    }
+    return current.toString();
+  };
+
+  const getParticipantsColor = (event) => {
+    const current = event.currentParticipants || 0;
+    const max = event.maxParticipants;
+    
+    if (!max) return 'text-primary';
+    
+    const percentage = (current / max) * 100;
+    if (percentage >= 90) return 'text-danger';
+    if (percentage >= 70) return 'text-warning';
+    if (percentage >= 30) return 'text-info';
+    return 'text-success';
+  };
+
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Chargement des événements...</span>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid>
@@ -79,10 +152,10 @@ const EventList = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h2>
-                <FaCalendarAlt className="me-2" />
+                <FaCalendarAlt className="me-2 text-primary" />
                 Gestion des Événements
               </h2>
-              <p className="text-muted">Gérez vos événements StudiMove</p>
+              <p className="text-muted">Organisez vos événements StudiMove</p>
             </div>
             <Button as={Link} to="/events/new" variant="primary" size="lg">
               <FaPlus className="me-2" />
@@ -92,143 +165,146 @@ const EventList = () => {
         </Col>
       </Row>
 
-      {/* Filtres */}
-      <Row className="mb-4">
-        <Col md={6}>
-          <InputGroup>
-            <InputGroup.Text>
-              <FaSearch />
-            </InputGroup.Text>
-            <Form.Control
-              type="text"
-              placeholder="Rechercher un événement..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </InputGroup>
-        </Col>
-        <Col md={3}>
-          <Form.Select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="draft">Brouillons</option>
-            <option value="active">Actifs</option>
-            <option value="completed">Terminés</option>
-            <option value="cancelled">Annulés</option>
-          </Form.Select>
-        </Col>
-        <Col md={3}>
-          <div className="text-end">
-            <small className="text-muted">
-              {filteredEvents.length} événement(s) trouvé(s)
-            </small>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Liste des événements */}
       <Row>
-        {filteredEvents.map(event => (
+        {events.map(event => (
           <Col key={event._id} lg={4} md={6} className="mb-4">
-            <Card className="h-100 event-card">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <strong>{event.name}</strong>
-                {getStatusBadge(event.status)}
+            <Card className="h-100 shadow-sm">
+              <Card.Header className="d-flex justify-content-between align-items-center bg-light">
+                <h5 className="mb-0 text-primary">{event.name}</h5>
+                <Badge {...getStatusBadge(event.status)}>
+                  {event.status}
+                </Badge>
               </Card.Header>
               
-              <Card.Body>
-                <div className="event-info mb-3">
+              <Card.Body className="d-flex flex-column">
+                <div className="mb-3">
                   <p className="mb-2">
-                    <strong>📍 Lieu:</strong> {event.location}
+                    <FaMapMarkerAlt className="me-2 text-muted" />
+                    <strong>{event.city}, {event.country}</strong>
                   </p>
+                  
                   <p className="mb-2">
-                    <strong>📅 Dates:</strong><br />
-                    {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                    <strong>Du:</strong> {new Date(event.startDate).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}
                   </p>
+                  
                   <p className="mb-2">
-                    <strong>👥 Participants:</strong> {event.participantCount || 0}
+                    <strong>Au:</strong> {new Date(event.endDate).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}
                   </p>
                 </div>
 
-                <div className="event-stats">
-                  <Row className="text-center">
-                    <Col>
-                      <div className="stat-item">
-                        <FaUsers className="text-primary" />
-                        <br />
-                        <small>{event.stats?.totalClients || 0}</small>
-                        <br />
-                        <small className="text-muted">Clients</small>
-                      </div>
-                    </Col>
-                    <Col>
-                      <div className="stat-item">
-                        <FaBed className="text-success" />
-                        <br />
-                        <small>{event.stats?.assignedRooms || 0}</small>
-                        <br />
-                        <small className="text-muted">Chambres</small>
-                      </div>
-                    </Col>
-                    <Col>
-                      <div className="stat-item">
-                        <FaCalendarAlt className="text-info" />
-                        <br />
-                        <small>{event.stats?.daysLeft || 0}</small>
-                        <br />
-                        <small className="text-muted">Jours</small>
-                      </div>
-                    </Col>
-                  </Row>
+                {/* ✅ PARTICIPANTS */}
+                <div className="mb-3">
+                  <p className="mb-1">
+                    <FaUsers className="me-2 text-muted" />
+                    <strong>Participants:</strong>
+                  </p>
+                  <span className={`fs-6 fw-bold ${getParticipantsColor(event)}`}>
+                    {formatParticipants(event)}
+                  </span>
+                </div>
+
+                {/* ✅ HÔTELS CORRIGÉS */}
+                <div className="mb-3">
+                  <p className="mb-1">
+                    <FaHotel className="me-2 text-muted" />
+                    <strong>Hôtels:</strong> <span className="text-info">{event.totalHotels}</span>
+                  </p>
+                  {event.totalCapacity > 0 && (
+                    <small className="text-muted">
+                      {event.totalCapacity} places disponibles
+                    </small>
+                  )}
+                </div>
+
+                {/* ✅ DESCRIPTION */}
+                {event.description && (
+                  <div className="mb-3">
+                    <small className="text-muted" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {event.description}
+                    </small>
+                  </div>
+                )}
+
+                <div className="mt-auto">
+                  <div className="d-flex flex-column gap-2">
+                    {/* Première ligne de boutons */}
+                    <div className="d-flex gap-2">
+                      <Button
+                        as={Link}
+                        to={`/events/${event._id}/edit`}
+                        variant="outline-primary"
+                        size="sm"
+                        className="flex-fill"
+                      >
+                        <FaEdit className="me-1" />
+                        Modifier
+                      </Button>
+                      
+                      <Button
+                        as={Link}
+                        to={`/events/${event._id}/hotels`}
+                        variant="outline-success"
+                        size="sm"
+                        className="flex-fill"
+                      >
+                        <FaHotel className="me-1" />
+                        Hôtels
+                      </Button>
+                    </div>
+
+                    {/* Deuxième ligne */}
+                    <div className="d-flex gap-2">
+                      <Button
+                        as={Link}
+                        to={`/clients?eventId=${event._id}`}
+                        variant="outline-info"
+                        size="sm"
+                        className="flex-fill"
+                      >
+                        <FaUsers className="me-1" />
+                        Clients
+                      </Button>
+
+                      <Button
+                        as={Link}
+                        to={`/assignments/${event._id}`}
+                        variant="outline-warning"
+                        size="sm"
+                        className="flex-fill"
+                      >
+                        🏨 Assignations
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </Card.Body>
-
-              <Card.Footer className="d-flex justify-content-between">
-                <Button 
-                  as={Link} 
-                  to={`/events/${event._id}`}
-                  variant="outline-primary" 
-                  size="sm"
-                >
-                  <FaEye className="me-1" />
-                  Voir
-                </Button>
-                
-                <div className="btn-group">
-                  <Button 
-                    as={Link} 
-                    to={`/events/${event._id}/edit`}
-                    variant="outline-secondary" 
-                    size="sm"
-                  >
-                    <FaEdit />
-                  </Button>
-                  <Button 
-                    as={Link} 
-                    to={`/assignments/${event._id}`}
-                    variant="outline-warning" 
-                    size="sm"
-                  >
-                    <FaBed />
-                  </Button>
-                </div>
-              </Card.Footer>
             </Card>
           </Col>
         ))}
       </Row>
 
-      {filteredEvents.length === 0 && !loading && (
+      {events.length === 0 && (
         <Row>
           <Col className="text-center py-5">
             <FaCalendarAlt size={64} className="text-muted mb-3" />
-            <h4 className="text-muted">Aucun événement trouvé</h4>
-            <p className="text-muted">Commencez par créer votre premier événement</p>
-            <Button as={Link} to="/events/new" variant="primary">
+            <h4 className="text-muted">Aucun événement</h4>
+            <p className="text-muted">Commencez par créer votre premier événement StudiMove</p>
+            <Button as={Link} to="/events/new" variant="primary" size="lg">
               <FaPlus className="me-2" />
-              Créer un événement
+              Créer votre premier événement
             </Button>
           </Col>
         </Row>

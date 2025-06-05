@@ -1,5 +1,5 @@
 // URL de base de l'API - CORRECTION ICI
-const API_BASE_URL = 'https://studimove-hotel.onrender.com/api';
+import API_BASE_URL from '../config/api';
 
 const api = {
   get: async (endpoint) => {
@@ -96,13 +96,51 @@ const api = {
   },
 };
 
-// Services pour les hôtels
+// Service pour les hôtels
 export const hotelService = {
-  getAllHotels: () => api.get('/hotels'),
-  getHotelById: (id) => api.get(`/hotels/${id}`),
-  createHotel: (hotelData) => api.post('/hotels', hotelData),
-  updateHotel: (id, hotelData) => api.put(`/hotels/${id}`, hotelData),
-  deleteHotel: (id) => api.delete(`/hotels/${id}`),
+  // Récupérer tous les hôtels
+  getAllHotels: async () => {
+    const response = await fetch(`${API_BASE_URL}/api/hotels`);
+    return await response.json();
+  },
+
+  // Récupérer un hôtel par ID
+  getHotelById: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotels/${id}`);
+    return await response.json();
+  },
+
+  // Créer un hôtel
+  createHotel: async (hotelData) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotels`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(hotelData)
+    });
+    return await response.json();
+  },
+
+  // Modifier un hôtel
+  updateHotel: async (id, hotelData) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotels/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(hotelData)
+    });
+    return await response.json();
+  },
+
+  // Supprimer un hôtel
+  deleteHotel: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotels/${id}`, {
+      method: 'DELETE'
+    });
+    return await response.json();
+  }
 };
 
 // Services pour les clients - AJOUTEZ CETTE SECTION
@@ -115,6 +153,7 @@ export const clientService = {
   createClient: (clientData) => api.post('/clients', clientData),
   updateClient: (id, clientData) => api.put(`/clients/${id}`, clientData),
   deleteClient: (id) => api.delete(`/clients/${id}`),
+  getGroups: () => api.get('/clients/groups'),
   importFromCSV: (formData) => {
     return fetch(`${API_BASE_URL}/clients/import-csv`, {
       method: 'POST',

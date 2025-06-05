@@ -3,11 +3,13 @@ import { Container, Row, Col, Table, Button, Form, InputGroup, Badge, Modal } fr
 import { Link } from 'react-router-dom';
 import { FaUsers, FaPlus, FaSearch, FaEdit, FaTrash, FaUpload, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API_BASE_URL from '../config/api';
 
 const ClientList = () => {
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -24,17 +26,19 @@ const ClientList = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('/api/clients');
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/clients`);
       const data = await response.json();
       
       if (data.success) {
-        setClients(data.data);
+        setClients(data.data || []);
+        setFilteredClients(data.data || []);
       } else {
-        toast.error('Erreur lors du chargement des clients');
+        toast.error(data.message || 'Erreur lors du chargement des clients');
       }
     } catch (error) {
       console.error('Erreur fetch clients:', error);
-      toast.error('Erreur de connexion');
+      toast.error('Erreur de connexion au serveur');
     } finally {
       setLoading(false);
     }
@@ -63,22 +67,22 @@ const ClientList = () => {
   };
 
   const handleDelete = async (clientId) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
-      try {
-        const response = await fetch(`/api/clients/${clientId}`, {
-          method: 'DELETE'
-        });
-        
-        if (response.ok) {
-          toast.success('Client supprimé avec succès');
-          fetchClients();
-        } else {
-          toast.error('Erreur lors de la suppression');
-        }
-      } catch (error) {
-        console.error('Erreur delete client:', error);
-        toast.error('Erreur de connexion');
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        toast.success('Client supprimé avec succès');
+        fetchClients();
+      } else {
+        toast.error('Erreur lors de la suppression');
       }
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur de connexion');
     }
   };
 

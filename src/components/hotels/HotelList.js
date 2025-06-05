@@ -1,77 +1,132 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, InputGroup, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Form, Modal } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaHotel, FaPlus, FaSearch, FaStar, FaMapMarkerAlt, FaEye, FaEdit } from 'react-icons/fa';
+import { FaHotel, FaPlus, FaMapMarkerAlt, FaStar, FaCalendarAlt, FaEye, FaEdit, FaTrash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API_BASE_URL from '../../config/api';
 
 const HotelList = () => {
   const [hotels, setHotels] = useState([]);
-  const [filteredHotels, setFilteredHotels] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [cityFilter, setCityFilter] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [hotelToDelete, setHotelToDelete] = useState(null);
 
   useEffect(() => {
-    fetchHotels();
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    filterHotels();
-  }, [hotels, searchTerm, cityFilter]);
-
-  const fetchHotels = async () => {
+  // ✅ NOUVELLE APPROCHE : Récupérer d'abord tous les événements et leurs assignations
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/hotels');
-      const data = await response.json();
+      // 1. Récupérer tous les hôtels
+      const hotelsResponse = await fetch(`${API_BASE_URL}/api/hotels`);
+      const hotelsData = await hotelsResponse.json();
       
-      if (data.success) {
-        setHotels(data.data);
+      // 2. Récupérer tous les événements
+      const eventsResponse = await fetch(`${API_BASE_URL}/api/events`);
+      const eventsData = await eventsResponse.json();
+      
+      if (hotelsData.success && eventsData.success) {
+        const allEvents = eventsData.data;
+        setEvents(allEvents);
+        
+        // 3. Pour chaque hôtel, trouver ses assignations via les événements
+        const hotelsWithEvents = await Promise.all(
+          hotelsData.data.map(async (hotel) => {
+            const linkedAssignments = [];
+            
+            // Parcourir tous les événements pour trouver les assignations de cet hôtel
+            for (const event of allEvents) {
+              try {
+                const assignmentsResponse = await fetch(`${API_BASE_URL}/api/assignments/event/${event._id}`);
+                const assignmentsData = await assignmentsResponse.json();
+                
+                if (assignmentsData.success && assignmentsData.data?.assignments) {
+                  // Chercher si cet hôtel est assigné à cet événement
+                  const hotelAssignments = assignmentsData.data.assignments.filter(
+                    assignment => assignment.hotelId._id === hotel._id
+                  );
+                  
+                  // Ajouter les assignations trouvées avec les infos de l'événement
+                  hotelAssignments.forEach(assignment => {
+                    linkedAssignments.push({
+                      ...assignment,
+                      eventName: event.name,
+                      eventCity: event.city,
+                      eventCountry: event.country,
+                      eventDates: {
+                        start: event.startDate,
+                        end: event.endDate
+                      }
+                    });
+                  });
+                }
+              } catch (error) {
+                console.error(`Erreur assignations événement ${event._id}:`, error);
+              }
+            }
+            
+            console.log(`🏨 Hôtel ${hotel.name} - ${linkedAssignments.length} assignations trouvées:`, linkedAssignments);
+            
+            return {
+              ...hotel,
+              linkedEvents: linkedAssignments
+            };
+          })
+        );
+        
+        setHotels(hotelsWithEvents);
       } else {
-        toast.error('Erreur lors du chargement des hôtels');
+        toast.error('Erreur lors du chargement des données');
       }
     } catch (error) {
-      console.error('Erreur fetch hotels:', error);
+      console.error('Erreur fetch data:', error);
       toast.error('Erreur de connexion');
     } finally {
       setLoading(false);
     }
   };
 
-  const filterHotels = () => {
-    let filtered = hotels;
-
-    if (searchTerm) {
-      filtered = filtered.filter(hotel => 
-        hotel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hotel.address.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const handleDeleteHotel = async () => {
+    if (!hotelToDelete) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/hotels/${hotelToDelete._id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        toast.success('Hôtel supprimé avec succès');
+        setHotels(hotels.filter(h => h._id !== hotelToDelete._id));
+      } else {
+        toast.error('Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur de connexion');
+    } finally {
+      setShowDeleteModal(false);
+      setHotelToDelete(null);
     }
-
-    if (cityFilter !== 'all') {
-      filtered = filtered.filter(hotel => 
-        hotel.address.toLowerCase().includes(cityFilter.toLowerCase())
-      );
-    }
-
-    setFilteredHotels(filtered);
   };
 
-  const getCities = () => {
-    const cities = [...new Set(hotels.map(hotel => 
-      hotel.address.split(',').pop().trim()
-    ))];
-    return cities.filter(city => city);
-  };
+  const filteredHotels = hotels.filter(hotel =>
+    hotel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    hotel.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    hotel.address.country.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const getTotalRooms = (hotel) => {
-    return hotel.roomTypes?.reduce((total, room) => total + room.quantity, 0) || 0;
-  };
-
-  const getRating = (hotel) => {
-    if (!hotel.reviews || hotel.reviews.length === 0) return 0;
-    const sum = hotel.reviews.reduce((acc, review) => acc + review.rating, 0);
-    return (sum / hotel.reviews.length).toFixed(1);
-  };
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Chargement des hôtels...</span>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid>
@@ -80,143 +135,172 @@ const HotelList = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h2>
-                <FaHotel className="me-2" />
+                <FaHotel className="me-2 text-primary" />
                 Gestion des Hôtels
               </h2>
-              <p className="text-muted">Gérez votre réseau d'hôtels partenaires</p>
+              <p className="text-muted">Gérez votre catalogue d'hôtels StudiMove</p>
             </div>
             <Button as={Link} to="/hotels/new" variant="primary" size="lg">
               <FaPlus className="me-2" />
-              Ajouter un Hôtel
+              Nouvel Hôtel
             </Button>
           </div>
         </Col>
       </Row>
 
-      {/* Filtres */}
+      {/* Barre de recherche */}
       <Row className="mb-4">
         <Col md={6}>
-          <InputGroup>
-            <InputGroup.Text>
-              <FaSearch />
-            </InputGroup.Text>
-            <Form.Control
-              type="text"
-              placeholder="Rechercher un hôtel..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </InputGroup>
-        </Col>
-        <Col md={3}>
-          <Form.Select 
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
-          >
-            <option value="all">Toutes les villes</option>
-            {getCities().map(city => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </Form.Select>
-        </Col>
-        <Col md={3}>
-          <div className="text-end">
-            <small className="text-muted">
-              {filteredHotels.length} hôtel(s) trouvé(s)
-            </small>
-          </div>
+          <Form.Control
+            type="text"
+            placeholder="Rechercher par nom, ville ou pays..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </Col>
       </Row>
 
-      {/* Liste des hôtels */}
       <Row>
         {filteredHotels.map(hotel => (
           <Col key={hotel._id} lg={4} md={6} className="mb-4">
-            <Card className="h-100 hotel-card">
-              {hotel.images && hotel.images.length > 0 && (
-                <Card.Img 
-                  variant="top" 
-                  src={hotel.images[0]} 
-                  style={{ height: '200px', objectFit: 'cover' }}
-                />
-              )}
+            <Card className="h-100 shadow-sm">
+              <Card.Header className="d-flex justify-content-between align-items-center bg-light">
+                <h5 className="mb-0 text-primary">{hotel.name}</h5>
+                <div className="d-flex align-items-center">
+                  {hotel.rating > 0 && (
+                    <div className="me-2">
+                      {[...Array(5)].map((_, i) => (
+                        <FaStar
+                          key={i}
+                          className={i < hotel.rating ? 'text-warning' : 'text-muted'}
+                          size="0.8em"
+                        />
+                      ))}
+                      <small className="ms-1 text-muted">({hotel.rating})</small>
+                    </div>
+                  )}
+                </div>
+              </Card.Header>
               
-              <Card.Body>
-                <Card.Title className="d-flex justify-content-between align-items-start">
-                  <span>{hotel.name}</span>
-                  <div className="d-flex align-items-center">
-                    <FaStar className="text-warning me-1" size={14} />
-                    <small>{getRating(hotel)}</small>
-                  </div>
-                </Card.Title>
-                
-                <Card.Text>
-                  <small className="text-muted">
-                    <FaMapMarkerAlt className="me-1" />
-                    {hotel.address}
-                  </small>
-                </Card.Text>
+              <Card.Body className="d-flex flex-column">
+                <div className="mb-3">
+                  <p className="mb-2">
+                    <FaMapMarkerAlt className="me-2 text-muted" />
+                    <strong>{hotel.address?.city || 'Ville'}, {hotel.address?.country || 'Pays'}</strong>
+                  </p>
+                  <small className="text-muted">{hotel.address?.street || hotel.address?.address || 'Adresse'}</small>
+                </div>
 
-                <div className="hotel-stats mb-3">
-                  <Row className="text-center">
-                    <Col>
-                      <div className="stat-item">
-                        <strong>{getTotalRooms(hotel)}</strong>
+                {/* ✅ ÉVÉNEMENTS LIÉS CORRIGÉS */}
+                <div className="mb-3">
+                  <p className="mb-2">
+                    <FaCalendarAlt className="me-2 text-muted" />
+                    <strong>Événements liés:</strong>
+                  </p>
+                  
+                  {hotel.linkedEvents && hotel.linkedEvents.length > 0 ? (
+                    <div className="d-flex flex-wrap gap-1">
+                      {hotel.linkedEvents.slice(0, 2).map((assignment, index) => (
+                        <Badge 
+                          key={assignment._id || index} 
+                          bg="success" 
+                          className="text-wrap"
+                          style={{ fontSize: '0.75em', maxWidth: '180px' }}
+                          title={`${assignment.eventCity}, ${assignment.eventCountry}`}
+                        >
+                          {assignment.eventName}
+                        </Badge>
+                      ))}
+                      {hotel.linkedEvents.length > 2 && (
+                        <Badge bg="info" style={{ fontSize: '0.75em' }}>
+                          +{hotel.linkedEvents.length - 2} autres
+                        </Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <small className="text-muted fst-italic">Aucun événement assigné</small>
+                  )}
+                </div>
+
+                {/* ✅ STATISTIQUES UTILES */}
+                <div className="mb-3">
+                  {hotel.linkedEvents && hotel.linkedEvents.length > 0 ? (
+                    <div className="row text-center">
+                      <div className="col-4">
+                        <strong className="text-success">{hotel.linkedEvents.length}</strong>
+                        <br />
+                        <small className="text-muted">Événement{hotel.linkedEvents.length > 1 ? 's' : ''}</small>
+                      </div>
+                      <div className="col-4">
+                        <strong className="text-info">
+                          {hotel.linkedEvents.reduce((sum, assignment) => sum + (assignment.totalCapacity || 0), 0)}
+                        </strong>
+                        <br />
+                        <small className="text-muted">Places</small>
+                      </div>
+                      <div className="col-4">
+                        <strong className="text-warning">
+                          {hotel.linkedEvents.reduce((sum, assignment) => {
+                            const rooms = assignment.availableRooms?.reduce((roomSum, room) => 
+                              roomSum + (room.quantity || 0), 0) || 0;
+                            return sum + rooms;
+                          }, 0)}
+                        </strong>
                         <br />
                         <small className="text-muted">Chambres</small>
                       </div>
-                    </Col>
-                    <Col>
-                      <div className="stat-item">
-                        <strong>{hotel.roomTypes?.length || 0}</strong>
-                        <br />
-                        <small className="text-muted">Types</small>
-                      </div>
-                    </Col>
-                    <Col>
-                      <div className="stat-item">
-                        <strong>{hotel.reviews?.length || 0}</strong>
-                        <br />
-                        <small className="text-muted">Avis</small>
-                      </div>
-                    </Col>
-                  </Row>
+                    </div>
+                  ) : (
+                    <small className="text-muted">Aucune statistique disponible</small>
+                  )}
                 </div>
 
-                {hotel.amenities && hotel.amenities.length > 0 && (
-                  <div className="amenities mb-3">
-                    {hotel.amenities.slice(0, 3).map((amenity, index) => (
-                      <Badge key={index} bg="light" text="dark" className="me-1 mb-1">
-                        {amenity}
-                      </Badge>
-                    ))}
-                    {hotel.amenities.length > 3 && (
-                      <Badge bg="secondary">+{hotel.amenities.length - 3}</Badge>
-                    )}
+                {/* ✅ INFO SUPPLÉMENTAIRE DES CHAMBRES */}
+                {hotel.linkedEvents && hotel.linkedEvents.length > 0 && hotel.linkedEvents[0].availableRooms && (
+                  <div className="mb-3">
+                    <small className="text-info">
+                      Chambres de {hotel.linkedEvents[0].availableRooms[0]?.bedCount || 'N/A'} personnes max
+                    </small>
                   </div>
                 )}
-              </Card.Body>
 
-              <Card.Footer className="d-flex justify-content-between">
-                <Button 
-                  as={Link} 
-                  to={`/hotels/${hotel._id}`}
-                  variant="outline-primary" 
-                  size="sm"
-                >
-                  <FaEye className="me-1" />
-                  Voir
-                </Button>
-                <Button 
-                  as={Link} 
-                  to={`/hotels/${hotel._id}/edit`}
-                  variant="outline-secondary" 
-                  size="sm"
-                >
-                  <FaEdit className="me-1" />
-                  Modifier
-                </Button>
-              </Card.Footer>
+                <div className="mt-auto">
+                  <div className="d-flex gap-2">
+                    <Button
+                      as={Link}
+                      to={`/hotels/${hotel._id}`}
+                      variant="outline-info"
+                      size="sm"
+                      className="flex-fill"
+                    >
+                      <FaEye className="me-1" />
+                      Voir
+                    </Button>
+                    
+                    <Button
+                      as={Link}
+                      to={`/hotels/${hotel._id}/edit`}
+                      variant="outline-primary"
+                      size="sm"
+                      className="flex-fill"
+                    >
+                      <FaEdit className="me-1" />
+                      Modifier
+                    </Button>
+                    
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => {
+                        setHotelToDelete(hotel);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </div>
+                </div>
+              </Card.Body>
             </Card>
           </Col>
         ))}
@@ -226,15 +310,49 @@ const HotelList = () => {
         <Row>
           <Col className="text-center py-5">
             <FaHotel size={64} className="text-muted mb-3" />
-            <h4 className="text-muted">Aucun hôtel trouvé</h4>
-            <p className="text-muted">Commencez par ajouter votre premier hôtel partenaire</p>
-            <Button as={Link} to="/hotels/new" variant="primary">
-              <FaPlus className="me-2" />
-              Ajouter un hôtel
-            </Button>
+            <h4 className="text-muted">
+              {searchTerm ? 'Aucun hôtel trouvé' : 'Aucun hôtel'}
+            </h4>
+            <p className="text-muted">
+              {searchTerm 
+                ? 'Essayez de modifier votre recherche' 
+                : 'Commencez par ajouter votre premier hôtel'
+              }
+            </p>
+            {!searchTerm && (
+              <Button as={Link} to="/hotels/new" variant="primary" size="lg">
+                <FaPlus className="me-2" />
+                Ajouter votre premier hôtel
+              </Button>
+            )}
           </Col>
         </Row>
       )}
+
+      {/* Modal de confirmation de suppression */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmer la suppression</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {hotelToDelete && (
+            <p>
+              Êtes-vous sûr de vouloir supprimer l'hôtel <strong>"{hotelToDelete.name}"</strong> ?
+              <br />
+              <small className="text-danger">Cette action est irréversible.</small>
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Annuler
+          </Button>
+          <Button variant="danger" onClick={handleDeleteHotel}>
+            <FaTrash className="me-2" />
+            Supprimer
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

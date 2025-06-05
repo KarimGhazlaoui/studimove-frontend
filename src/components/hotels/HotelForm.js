@@ -37,16 +37,19 @@ const HotelForm = () => {
         setFormData({
           name: hotel.name || '',
           description: hotel.description || '',
-          address: hotel.address || '',
-          location: hotel.location || '',
-          country: hotel.country || '',
-          category: hotel.category || '',
-          pricePerNight: hotel.pricePerNight || '',
+          // ✅ Récupérer depuis address
+          address: hotel.address?.street || '',
+          location: hotel.address?.city || '',
+          country: hotel.address?.country || '',
+          category: hotel.category || '', // Pas géré côté backend mais on garde
+          pricePerNight: hotel.pricePerNight || '', // Pas géré côté backend mais on garde
           rating: hotel.rating || '',
-          phone: hotel.phone || '',
-          email: hotel.email || '',
-          website: hotel.website || '',
-          amenities: hotel.amenities ? hotel.amenities.join(', ') : ''
+          // ✅ Récupérer depuis contact
+          phone: hotel.contact?.phone || '',
+          email: hotel.contact?.email || '',
+          website: hotel.contact?.website || '',
+          // ✅ Convertir facilities en amenities
+          amenities: hotel.facilities ? hotel.facilities.join(', ') : ''
         });
       }
     } catch (error) {
@@ -120,13 +123,29 @@ const HotelForm = () => {
     setLoading(true);
     
     try {
+      // ✅ ADAPTER LES DONNÉES AU FORMAT BACKEND
       const dataToSend = {
-        ...formData,
-        pricePerNight: formData.pricePerNight ? parseFloat(formData.pricePerNight) : undefined,
-        rating: formData.rating ? parseFloat(formData.rating) : undefined,
-        amenities: formData.amenities 
+        name: formData.name,
+        description: formData.description,
+        // ✅ Format address comme attendu par le backend
+        address: {
+          street: formData.address || '',
+          city: formData.location || '',
+          country: formData.country || '',
+          zipCode: '', // Vous pouvez ajouter ce champ si nécessaire
+          coordinates: {}
+        },
+        // ✅ Format contact comme attendu par le backend
+        contact: {
+          phone: formData.phone || '',
+          email: formData.email || '',
+          website: formData.website || ''
+        },
+        // ✅ Convertir amenities en facilities
+        facilities: formData.amenities
           ? formData.amenities.split(',').map(item => item.trim()).filter(item => item)
-          : []
+          : [],
+        rating: formData.rating ? parseFloat(formData.rating) : undefined
       };
       
       // Nettoyer les champs vides
@@ -135,6 +154,8 @@ const HotelForm = () => {
           delete dataToSend[key];
         }
       });
+      
+      console.log('🔍 Données adaptées pour le backend:', dataToSend);
       
       let result;
       if (isEdit) {
