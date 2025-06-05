@@ -1,0 +1,247 @@
+.assignment-page {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.stats-card {
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stats-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.stats-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #495057;
+}
+
+.hotel-card {
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+}
+
+.room-card {
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+}
+
+.room-card:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.client-card {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.client-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.assignment-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.assignment-header h1 {
+  margin: 0;
+  font-weight: 300;
+}
+
+.assignment-header .lead {
+  margin-bottom: 0;
+  opacity: 0.9;
+}
+
+.action-buttons {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.tab-content {
+  padding-top: 1rem;
+}
+
+.nav-tabs .nav-link {
+  border-radius: 0.5rem 0.5rem 0 0;
+  border: none;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: #007bff;
+  color: white;
+  border: none;
+}
+
+.nav-tabs .nav-link:hover {
+  background-color: #e9ecef;
+  border: none;
+}
+
+.progress-ring {
+  width: 60px;
+  height: 60px;
+}
+
+.progress-ring circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.occupancy-high {
+  color: #dc3545;
+}
+
+.occupancy-medium {
+  color: #ffc107;
+}
+
+.occupancy-low {
+  color: #28a745;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.text-gradient {
+  background: linear-gradient(45deg, #007bff, #6f42c1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.alert-dismissible .btn-close {
+  padding: 0.5rem;
+}
+
+.modal-xl {
+  max-width: 1200px;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0,123,255,0.1);
+}
+
+@media (max-width: 768px) {
+  .assignment-header {
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .stats-number {
+    font-size: 1.5rem;
+  }
+  
+  .action-buttons {
+    text-align: center;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .client-card {
+    margin-bottom: 1rem;
+  }
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.toast-container {
+  z-index: 9999;
+}
+
+.custom-tooltip {
+  font-size: 0.875rem;
+}
+
+.room-occupancy-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.room-occupancy-indicator.empty {
+  background-color: #28a745;
+}
+
+.room-occupancy-indicator.partial {
+  background-color: #ffc107;
+}
+
+.room-occupancy-indicator.full {
+  background-color: #dc3545;
+}
+
+.gender-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.25rem;
+}
+
+.assignment-success {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.room-assignment-animation {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
