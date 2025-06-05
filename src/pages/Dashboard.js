@@ -23,9 +23,9 @@ const Dashboard = () => {
     try {
       // 🔧 CORRIGÉ : URLs complètes vers votre backend Render
       const [hotelsRes, clientsRes, eventsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/hotels`).catch(() => ({ json: () => ({ data: [] }) })),
-        fetch(`${API_BASE_URL}/api/clients`).catch(() => ({ json: () => ({ data: [] }) })),
-        fetch(`${API_BASE_URL}/api/events`).catch(() => ({ json: () => ({ data: [] }) }))
+        fetch(`${API_BASE_URL}/hotels`).catch(() => ({ json: () => ({ data: [] }) })),
+        fetch(`${API_BASE_URL}/clients`).catch(() => ({ json: () => ({ data: [] }) })),
+        fetch(`${API_BASE_URL}/events`).catch(() => ({ json: () => ({ data: [] }) }))
       ]);
 
       const hotels = await hotelsRes.json();

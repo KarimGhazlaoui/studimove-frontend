@@ -23,7 +23,7 @@ const HotelClientAssignment = () => {
 
   const fetchAssignmentDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}`);
+      const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -41,7 +41,7 @@ const HotelClientAssignment = () => {
 
   const fetchAvailableClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients?eventId=${eventId}&status=En_attente`);
+      const response = await fetch(`${API_BASE_URL}/clients?eventId=${eventId}&status=En_attente`);
       const result = await response.json();
       
       if (result.success) {
@@ -54,7 +54,7 @@ const HotelClientAssignment = () => {
 
   const fetchAssignedClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients?eventId=${eventId}&assignedHotel=${assignment?.hotelId._id}`);
+      const response = await fetch(`${API_BASE_URL}/clients?eventId=${eventId}&assignedHotel=${assignment?.hotelId._id}`);
       const result = await response.json();
       
       if (result.success) {
@@ -77,7 +77,7 @@ const HotelClientAssignment = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients/assign-to-hotel`, {
+      const response = await fetch(`${API_BASE_URL}/clients/assign-to-hotel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

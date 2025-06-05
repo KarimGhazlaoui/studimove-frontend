@@ -15,7 +15,7 @@ const ClientList = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/clients');
+      const response = await fetch('/clients');
       const data = await response.json();
       
       if (data.success) {
@@ -37,7 +37,7 @@ const ClientList = () => {
     }
 
     try {
-      const response = await fetch(`/api/clients/${clientId}`, {
+      const response = await fetch(`/clients/${clientId}`, {
         method: 'DELETE'
       });
 

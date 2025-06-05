@@ -13,8 +13,8 @@ const AssignmentPage = () => {
     setIsLoading(true);
     try {
       const [clientsRes, hotelsRes] = await Promise.all([
-        fetch(`/api/clients?eventId=${eventId}`),
-        fetch(`/api/hotels?eventId=${eventId}`)
+        fetch(`/clients?eventId=${eventId}`),
+        fetch(`/hotels?eventId=${eventId}`)
       ]);
       
       const clientsData = await clientsRes.json();

@@ -21,11 +21,11 @@ const HotelList = () => {
   const fetchData = async () => {
     try {
       // 1. Récupérer tous les hôtels
-      const hotelsResponse = await fetch(`${API_BASE_URL}/api/hotels`);
+      const hotelsResponse = await fetch(`${API_BASE_URL}/hotels`);
       const hotelsData = await hotelsResponse.json();
       
       // 2. Récupérer tous les événements
-      const eventsResponse = await fetch(`${API_BASE_URL}/api/events`);
+      const eventsResponse = await fetch(`${API_BASE_URL}/events`);
       const eventsData = await eventsResponse.json();
       
       if (hotelsData.success && eventsData.success) {
@@ -40,7 +40,7 @@ const HotelList = () => {
             // Parcourir tous les événements pour trouver les assignations de cet hôtel
             for (const event of allEvents) {
               try {
-                const assignmentsResponse = await fetch(`${API_BASE_URL}/api/assignments/event/${event._id}`);
+                const assignmentsResponse = await fetch(`${API_BASE_URL}/assignments/event/${event._id}`);
                 const assignmentsData = await assignmentsResponse.json();
                 
                 if (assignmentsData.success && assignmentsData.data?.assignments) {
@@ -93,7 +93,7 @@ const HotelList = () => {
     if (!hotelToDelete) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/hotels/${hotelToDelete._id}`, {
+      const response = await fetch(`${API_BASE_URL}/hotels/${hotelToDelete._id}`, {
         method: 'DELETE'
       });
       

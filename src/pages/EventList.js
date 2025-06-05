@@ -18,7 +18,7 @@ const EventList = () => {
     try {
       console.log(`🔍 Récupération des stats pour événement: ${eventId}`);
       
-      const response = await fetch(`${API_BASE_URL}/api/assignments/event/${eventId}`);
+      const response = await fetch(`${API_BASE_URL}/assignments/event/${eventId}`);
       const data = await response.json();
       
       console.log(`📊 Réponse API assignments:`, data);
@@ -71,7 +71,7 @@ const EventList = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/events`);
+      const response = await fetch(`${API_BASE_URL}/events`);
       const data = await response.json();
       
       if (data.success) {

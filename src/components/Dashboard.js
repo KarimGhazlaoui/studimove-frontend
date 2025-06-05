@@ -18,8 +18,8 @@ const Dashboard = () => {
       
       // Récupérer les statistiques depuis différentes APIs
       const [hotelsRes, clientsRes] = await Promise.all([
-        fetch('/api/hotels'),
-        fetch('/api/clients')
+        fetch('/hotels'),
+        fetch('/clients')
       ]);
 
       const hotelsData = await hotelsRes.json();

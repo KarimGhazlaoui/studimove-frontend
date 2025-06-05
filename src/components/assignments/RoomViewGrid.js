@@ -9,7 +9,7 @@ const RoomViewGrid = ({ eventId, hotels, onRoomUpdate }) => {
 
   const fetchRoomData = async () => {
     try {
-      const response = await fetch(`/api/assignments/rooms/${eventId}?hotel=${selectedHotel}`);
+      const response = await fetch(`/assignments/rooms/${eventId}?hotel=${selectedHotel}`);
       const data = await response.json();
       setRoomData(data.rooms || {});
     } catch (error) {

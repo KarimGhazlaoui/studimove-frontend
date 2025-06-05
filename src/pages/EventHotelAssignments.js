@@ -29,7 +29,7 @@ const EventHotelAssignments = () => {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments/event/${eventId}`);
+      const response = await fetch(`${API_BASE_URL}/assignments/event/${eventId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -47,7 +47,7 @@ const EventHotelAssignments = () => {
 
   const fetchAvailableHotels = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments/available-hotels/${eventId}`);
+      const response = await fetch(`${API_BASE_URL}/assignments/available-hotels/${eventId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -72,7 +72,7 @@ const EventHotelAssignments = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments`, {
+      const response = await fetch(`${API_BASE_URL}/assignments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -104,7 +104,7 @@ const EventHotelAssignments = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments/${selectedAssignment._id}`, {
+      const response = await fetch(`${API_BASE_URL}/assignments/${selectedAssignment._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -135,7 +135,7 @@ const EventHotelAssignments = () => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette assignation ?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}`, {
+      const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}`, {
         method: 'DELETE'
       });
 

@@ -10,7 +10,7 @@ const ManualAssignmentModal = ({ show, client, hotels, onHide, onAssign }) => {
     
     if (hotelId) {
       // Récupérer les clients déjà assignés à cet hôtel pour les colocataires potentiels
-      const response = await fetch(`/api/clients/hotel/${hotelId}/available-roommates`);
+      const response = await fetch(`/clients/hotel/${hotelId}/available-roommates`);
       const data = await response.json();
       setAvailableRoommates(data.clients || []);
     }

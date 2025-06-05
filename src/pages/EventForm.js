@@ -8,12 +8,12 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://studimove-hotel.o
 
 const eventService = {
   getEventById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/api/events/${id}`);
+    const response = await fetch(`${API_BASE_URL}/events/${id}`);
     return await response.json();
   },
   
   createEvent: async (eventData) => {
-    const response = await fetch(`${API_BASE_URL}/api/events`, {
+    const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(eventData)
@@ -22,7 +22,7 @@ const eventService = {
   },
   
   updateEvent: async (id, eventData) => {
-    const response = await fetch(`${API_BASE_URL}/api/events/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(eventData)
@@ -225,8 +225,8 @@ const EventForm = () => {
       console.log('🔍 Données envoyées:', dataToSend);
 
       const url = isEdit 
-        ? `${API_BASE_URL}/api/events/${id}` 
-        : `${API_BASE_URL}/api/events`;
+        ? `${API_BASE_URL}/events/${id}` 
+        : `${API_BASE_URL}/events`;
       
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',

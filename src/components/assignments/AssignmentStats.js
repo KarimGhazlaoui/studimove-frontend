@@ -4,7 +4,7 @@ const AssignmentStats = ({ eventId }) => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`/api/assignments/stats/${eventId}`);
+        const response = await fetch(`/assignments/stats/${eventId}`);
         const data = await response.json();
         setStats(data.stats);
       } catch (error) {
