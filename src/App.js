@@ -31,6 +31,27 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
+// 🔧 COMPOSANTS TEMPORAIRES pour les assignations (évite les erreurs d'import)
+const AssignmentList = () => (
+  <div className="container mt-4">
+    <h1>Gestion des Assignations</h1>
+    <div className="alert alert-info">
+      <h5>Sélectionnez un événement</h5>
+      <p>Pour gérer les assignations de chambres, vous devez d'abord sélectionner un événement depuis la page des événements.</p>
+      <a href="/events" className="btn btn-primary">Aller aux événements</a>
+    </div>
+  </div>
+);
+
+const AssignmentPage = () => (
+  <div className="container mt-4">
+    <h1>Page d'Assignation</h1>
+    <div className="alert alert-warning">
+      <p>Cette page est en cours de développement.</p>
+    </div>
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
@@ -121,6 +142,19 @@ function App() {
             <Route path="/clients/:id/edit" element={
               <ProtectedRoute>
                 <ClientForm />
+              </ProtectedRoute>
+            } />
+
+            {/* 🔧 ASSIGNATIONS - Routes ajoutées seulement */}
+            <Route path="/assignments" element={
+              <ProtectedRoute>
+                <AssignmentList />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/assignments/:eventId" element={
+              <ProtectedRoute>
+                <AssignmentPage />
               </ProtectedRoute>
             } />
             

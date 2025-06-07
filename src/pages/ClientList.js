@@ -9,39 +9,19 @@ const ClientList = () => {
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null); // 🆕 Événement sélectionné complet
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [csvFile, setCsvFile] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState('');
-  
-  // 🆕 États pour la suppression de masse
+  const [error, setError] = useState(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  // 🆕 Charger les clients quand l'événement change
-  useEffect(() => {
-    if (selectedEventId) {
-      fetchClients();
-    } else {
-      setClients([]);
-      setFilteredClients([]);
-    }
-  }, [selectedEventId]);
-
-  useEffect(() => {
-    filterClients();
-  }, [clients, searchTerm, typeFilter, statusFilter]);
-
-  // 🆕 Fonction modifiée pour filtrer par événement
+  // 🔧 Fonction pour récupérer les clients
   const fetchClients = async () => {
     if (!selectedEventId) {
       setClients([]);
@@ -53,7 +33,6 @@ const ClientList = () => {
       setLoading(true);
       console.log('🔄 Récupération des clients pour événement:', selectedEventId);
       
-      // ✅ UTILISER LE SERVICE au lieu de fetch direct
       const data = await clientService.getAllClients({ eventId: selectedEventId });
       
       console.log('✅ Clients reçus:', data);
@@ -74,12 +53,12 @@ const ClientList = () => {
     }
   };
 
+  // 🔧 Fonction pour récupérer les événements
   const fetchEvents = async () => {
     try {
       const data = await eventService.getAllEvents();
       if (data.success) {
         setEvents(data.data || []);
-        // 🆕 Auto-sélectionner le premier événement s'il y en a
         if (data.data && data.data.length > 0) {
           const firstEvent = data.data[0];
           setSelectedEventId(firstEvent._id);
@@ -92,17 +71,7 @@ const ClientList = () => {
     }
   };
 
-  // 🆕 Gérer le changement d'événement
-  const handleEventChange = (eventId) => {
-    setSelectedEventId(eventId);
-    const event = events.find(e => e._id === eventId);
-    setSelectedEvent(event);
-    // Reset des filtres lors du changement d'événement
-    setSearchTerm('');
-    setTypeFilter('all');
-    setStatusFilter('all');
-  };
-
+  // 🔧 Fonction pour filtrer les clients
   const filterClients = () => {
     let filtered = clients;
     
@@ -125,6 +94,36 @@ const ClientList = () => {
     setFilteredClients(filtered);
   };
 
+  // 🔧 UseEffect pour charger les événements au montage
+  useEffect(() => {
+    fetchEvents();
+  }, []); // ✅ Dépendances vides
+
+  // 🔧 UseEffect pour charger les clients quand l'événement change
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchClients();
+    } else {
+      setClients([]);
+      setFilteredClients([]);
+    }
+  }, [selectedEventId]); // ✅ Supprimé fetchClients des dépendances
+
+  // 🔧 UseEffect pour filtrer les clients
+  useEffect(() => {
+    filterClients();
+  }, [clients, searchTerm, typeFilter, statusFilter]); // ✅ Supprimé filterClients des dépendances
+
+  // 🔧 Gérer le changement d'événement
+  const handleEventChange = (eventId) => {
+    setSelectedEventId(eventId);
+    const event = events.find(e => e._id === eventId);
+    setSelectedEvent(event);
+    setSearchTerm('');
+    setTypeFilter('all');
+    setStatusFilter('all');
+  };
+
   const handleDelete = async (clientId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
       return;
@@ -144,15 +143,13 @@ const ClientList = () => {
     }
   };
 
-  // 🆕 Supprimer tous les clients de l'événement
   const handleDeleteAllClients = async () => {
     if (!selectedEventId || !selectedEvent) return;
     
     setDeleteLoading(true);
     try {
-      // ✅ Créer l'URL complète avec ton API_BASE_URL
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_BASE_URL}/clients/event/${selectedEventId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/event/${selectedEventId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
@@ -256,7 +253,6 @@ const ClientList = () => {
     return <Badge bg={variants[gender] || 'secondary'}>{gender}</Badge>;
   };
 
-  // 🆕 Stats rapides
   const stats = {
     total: filteredClients.length,
     assigned: filteredClients.filter(c => c.assignedHotel).length,
@@ -289,7 +285,6 @@ const ClientList = () => {
                 <FaUpload className="me-2" />
                 Importer CSV
               </Button>
-              {/* 🆕 Bouton suppression de masse */}
               <Button
                 variant="outline-danger"
                 onClick={() => setShowDeleteAllModal(true)}
@@ -307,7 +302,7 @@ const ClientList = () => {
         </Col>
       </Row>
 
-      {/* 🆕 Sélecteur d'événement principal */}
+      {/* Sélecteur d'événement principal */}
       <Row className="mb-4">
         <Col md={6}>
           <Card>
@@ -322,7 +317,7 @@ const ClientList = () => {
                   <option value="">-- Choisir un événement --</option>
                   {events.map(event => (
                     <option key={event._id} value={event._id}>
-                      {event.name} • {event.city}, {event.country} • {new Date(event.startDate).toLocaleDateString()}
+                      {event.name} • {event.city}, {event.country} • {event.startDate ? new Date(event.startDate).toLocaleDateString() : 'Date non définie'}
                     </option>
                   ))}
                 </Form.Select>
@@ -331,7 +326,7 @@ const ClientList = () => {
           </Card>
         </Col>
         
-        {/* 🆕 Stats rapides */}
+        {/* Stats rapides */}
         <Col md={6}>
           <Card className="bg-light">
             <Card.Body>
@@ -470,7 +465,6 @@ const ClientList = () => {
                             <td>
                               <div>
                                 <strong>{client.firstName} {client.lastName}</strong>
-                                {/* 🆕 Affichage de l'événement */}
                                 {client.eventId && (
                                   <div className="small text-muted">
                                     📅 {selectedEvent?.name || 'Événement'}
@@ -572,7 +566,7 @@ const ClientList = () => {
         </Row>
       )}
 
-      {/* 🆕 Modal de confirmation pour suppression de masse */}
+      {/* Modal de confirmation pour suppression de masse */}
       <Modal show={showDeleteAllModal} onHide={() => setShowDeleteAllModal(false)} centered>
         <Modal.Header closeButton className="bg-danger text-white">
           <Modal.Title>

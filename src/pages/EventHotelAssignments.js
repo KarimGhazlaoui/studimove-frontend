@@ -9,11 +9,12 @@ const EventHotelAssignments = () => {
   const { eventId } = useParams();
   const [data, setData] = useState(null);
   const [availableHotels, setAvailableHotels] = useState([]);
+  const [eventInfo, setEventInfo] = useState(null); // 🆕 Ajouter les infos de l'événement
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  
+
   const [assignForm, setAssignForm] = useState({
     hotelId: '',
     availableRooms: [
@@ -52,6 +53,7 @@ const EventHotelAssignments = () => {
       
       if (result.success) {
         setAvailableHotels(result.data);
+        setEventInfo(result.event); // 🆕 Stocker les infos de l'événement
       }
     } catch (error) {
       console.error('Erreur fetch available hotels:', error);
@@ -65,7 +67,6 @@ const EventHotelAssignments = () => {
       toast.error('Veuillez sélectionner un hôtel');
       return;
     }
-
     if (assignForm.availableRooms.length === 0) {
       toast.error('Veuillez ajouter au moins un type de chambre');
       return;
@@ -199,14 +200,14 @@ const EventHotelAssignments = () => {
     if (isEdit && selectedAssignment) {
       setSelectedAssignment(prev => ({
         ...prev,
-        availableRooms: prev.availableRooms.map((room, i) => 
+        availableRooms: prev.availableRooms.map((room, i) =>
           i === index ? { ...room, [field]: value } : room
         )
       }));
     } else {
       setAssignForm(prev => ({
         ...prev,
-        availableRooms: prev.availableRooms.map((room, i) => 
+        availableRooms: prev.availableRooms.map((room, i) =>
           i === index ? { ...room, [field]: value } : room
         )
       }));
@@ -214,9 +215,9 @@ const EventHotelAssignments = () => {
   };
 
   const calculateOccupancyRate = (assignment) => {
-    const totalCapacity = assignment.availableRooms?.reduce((sum, room) => 
+    const totalCapacity = assignment.availableRooms?.reduce((sum, room) =>
       sum + (room.quantity * room.bedCount), 0) || 0;
-    const totalAssigned = assignment.availableRooms?.reduce((sum, room) => 
+    const totalAssigned = assignment.availableRooms?.reduce((sum, room) =>
       sum + ((room.assignedRooms || 0) * room.bedCount), 0) || 0;
     
     if (totalCapacity === 0) return 0;
@@ -250,12 +251,19 @@ const EventHotelAssignments = () => {
                 Hôtels assignés
               </h2>
               <p className="text-muted">
-                {data?.assignments[0]?.eventId?.name} - {data?.assignments[0]?.eventId?.city}, {data?.assignments[0]?.eventId?.country}
+                {/* 🆕 Solution sécurisée pour éviter l'erreur */}
+                {eventInfo ? (
+                  `${eventInfo.name} - ${eventInfo.city}, ${eventInfo.country}`
+                ) : data?.assignments?.length > 0 ? (
+                  `${data.assignments[0].eventId.name} - ${data.assignments[0].eventId.city}, ${data.assignments[0].eventId.country}`
+                ) : (
+                  'Chargement des informations de l\'événement...'
+                )}
               </p>
             </div>
-            <Button 
-              variant="primary" 
-              size="lg" 
+            <Button
+              variant="primary"
+              size="lg"
               onClick={() => setShowAssignModal(true)}
               disabled={availableHotels.length === 0}
             >
@@ -393,9 +401,9 @@ const EventHotelAssignments = () => {
 
               <Card.Footer>
                 <div className="d-flex gap-2">
-                  <Button 
-                    variant="outline-primary" 
-                    size="sm" 
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
                     className="flex-fill"
                     onClick={() => {
                       setSelectedAssignment(assignment);
@@ -405,9 +413,9 @@ const EventHotelAssignments = () => {
                     <FaEdit className="me-1" />
                     Modifier
                   </Button>
-                  <Button 
-                    variant="outline-success" 
-                    size="sm" 
+                  <Button
+                    variant="outline-success"
+                    size="sm"
                     className="flex-fill"
                     as={Link}
                     to={`/assignments/${eventId}/hotel/${assignment._id}`}
@@ -415,8 +423,8 @@ const EventHotelAssignments = () => {
                     <FaBed className="me-1" />
                     Clients
                   </Button>
-                  <Button 
-                    variant="outline-danger" 
+                  <Button
+                    variant="outline-danger"
                     size="sm"
                     onClick={() => handleDeleteAssignment(assignment._id)}
                   >
@@ -443,7 +451,7 @@ const EventHotelAssignments = () => {
               </Button>
             ) : (
               <Alert variant="warning" className="mt-3">
-                <strong>Attention:</strong> Aucun hôtel disponible. 
+                <strong>Attention:</strong> Aucun hôtel disponible.
                 <Link to="/hotels/new" className="ms-2">Créer un nouvel hôtel</Link>
               </Alert>
             )}
@@ -491,9 +499,9 @@ const EventHotelAssignments = () => {
                   <FaBed className="me-1" />
                   Configuration des chambres par pack *
                 </Form.Label>
-                <Button 
+                <Button
                   type="button"
-                  variant="outline-primary" 
+                  variant="outline-primary"
                   size="sm"
                   onClick={() => addRoomPack()}
                 >
@@ -628,9 +636,9 @@ const EventHotelAssignments = () => {
                       <FaBed className="me-1" />
                       Configuration des chambres par pack
                     </Form.Label>
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline-primary" 
+                      variant="outline-primary"
                       size="sm"
                       onClick={() => addRoomPack(true)}
                     >

@@ -1,293 +1,320 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Table, Badge, Form, Modal } from 'react-bootstrap';
-import { FaBed, FaUsers, FaArrowLeft, FaUserPlus, FaEdit } from 'react-icons/fa';
+import { Container, Row, Col, Card, Button, Table, Badge, Form, Alert, Modal } from 'react-bootstrap';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { FaUsers, FaHotel, FaCheck, FaTimes, FaArrowLeft, FaUserPlus, FaUserMinus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import API_BASE_URL from '../config/api';
+import { clientService, hotelService, eventService } from '../services/api';
 
 const HotelClientAssignment = () => {
   const { eventId, assignmentId } = useParams();
-  const [assignment, setAssignment] = useState(null);
-  const [availableClients, setAvailableClients] = useState([]);
+  const navigate = useNavigate();
+  
+  // États principaux
+  const [event, setEvent] = useState(null);
+  const [hotel, setHotel] = useState(null);
   const [assignedClients, setAssignedClients] = useState([]);
+  const [availableClients, setAvailableClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  
+  // États pour les modals
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedClients, setSelectedClients] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [showUnassignModal, setShowUnassignModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  
+  // États pour les filtres
+  const [availableFilter, setAvailableFilter] = useState('all');
+  const [assignedFilter, setAssignedFilter] = useState('all');
 
   useEffect(() => {
-    fetchAssignmentDetails();
-    fetchAvailableClients();
-    fetchAssignedClients();
-  }, [assignmentId]);
+    if (eventId && assignmentId) {
+      fetchAssignmentDetails();
+      fetchAssignedClients();
+      fetchAvailableClients();
+    }
+  }, [eventId, assignmentId]);
 
   const fetchAssignmentDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setAssignment(result.data);
-      } else {
-        toast.error('Erreur lors du chargement de l\'assignation');
+      // Récupérer les détails de l'événement
+      const eventData = await eventService.getEvent(eventId);
+      if (eventData.success) {
+        setEvent(eventData.data);
       }
-    } catch (error) {
-      console.error('Erreur fetch assignment:', error);
-      toast.error('Erreur de connexion');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchAvailableClients = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/clients?eventId=${eventId}&status=En_attente`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setAvailableClients(result.data);
+      // Récupérer les détails de l'hôtel
+      const hotelData = await hotelService.getHotel(assignmentId);
+      if (hotelData.success) {
+        setHotel(hotelData.data);
       }
     } catch (error) {
-      console.error('Erreur fetch available clients:', error);
+      console.error('Erreur récupération détails:', error);
+      toast.error('Erreur lors du chargement des détails');
     }
   };
 
   const fetchAssignedClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/clients?eventId=${eventId}&assignedHotel=${assignment?.hotelId._id}`);
-      const result = await response.json();
+      const data = await clientService.getAllClients({ 
+        eventId: eventId,
+        assignedHotel: assignmentId 
+      });
       
-      if (result.success) {
-        setAssignedClients(result.data);
+      if (data.success) {
+        setAssignedClients(data.data || []);
       }
     } catch (error) {
-      console.error('Erreur fetch assigned clients:', error);
+      console.error('Erreur récupération clients assignés:', error);
+      toast.error('Erreur lors du chargement des clients assignés');
     }
   };
 
-  const handleAssignClients = async () => {
-    if (selectedClients.length === 0) {
-      toast.error('Veuillez sélectionner au moins un client');
-      return;
-    }
-
-    if (!selectedRoom) {
-      toast.error('Veuillez sélectionner un type de chambre');
-      return;
-    }
-
+  const fetchAvailableClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/clients/assign-to-hotel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          clientIds: selectedClients,
-          hotelId: assignment.hotelId._id,
-          assignmentId: assignmentId,
-          roomType: selectedRoom
-        })
+      setLoading(true);
+      const data = await clientService.getAllClients({ 
+        eventId: eventId,
+        unassigned: true 
+      });
+      
+      if (data.success) {
+        setAvailableClients(data.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur récupération clients disponibles:', error);
+      toast.error('Erreur lors du chargement des clients disponibles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignClient = async (client) => {
+    setSelectedClient(client);
+    setShowAssignModal(true);
+  };
+
+  const confirmAssignClient = async () => {
+    if (!selectedClient) return;
+    
+    setAssignmentLoading(true);
+    try {
+      const result = await clientService.updateClient(selectedClient._id, {
+        assignedHotel: assignmentId,
+        status: 'Assigné'
       });
 
-      const result = await response.json();
-
       if (result.success) {
-        toast.success(`${selectedClients.length} client(s) assigné(s) avec succès`);
+        toast.success(`${selectedClient.firstName} ${selectedClient.lastName} assigné(e) à ${hotel?.name}`);
         setShowAssignModal(false);
-        setSelectedClients([]);
-        setSelectedRoom(null);
-        fetchAvailableClients();
+        setSelectedClient(null);
+        
+        // Rafraîchir les listes
         fetchAssignedClients();
-        fetchAssignmentDetails();
+        fetchAvailableClients();
       } else {
         toast.error(result.message || 'Erreur lors de l\'assignation');
       }
     } catch (error) {
-      console.error('Erreur assign clients:', error);
-      toast.error('Erreur de connexion');
+      console.error('Erreur assignation:', error);
+      toast.error('Erreur lors de l\'assignation du client');
+    } finally {
+      setAssignmentLoading(false);
     }
   };
 
-  const handleClientSelection = (clientId) => {
-    setSelectedClients(prev => 
-      prev.includes(clientId) 
-        ? prev.filter(id => id !== clientId)
-        : [...prev, clientId]
-    );
+  const handleUnassignClient = async (client) => {
+    setSelectedClient(client);
+    setShowUnassignModal(true);
   };
 
-  if (loading) {
+  const confirmUnassignClient = async () => {
+    if (!selectedClient) return;
+    
+    setAssignmentLoading(true);
+    try {
+      const result = await clientService.updateClient(selectedClient._id, {
+        assignedHotel: null,
+        status: 'En attente'
+      });
+
+      if (result.success) {
+        toast.success(`${selectedClient.firstName} ${selectedClient.lastName} retiré(e) de ${hotel?.name}`);
+        setShowUnassignModal(false);
+        setSelectedClient(null);
+        
+        // Rafraîchir les listes
+        fetchAssignedClients();
+        fetchAvailableClients();
+      } else {
+        toast.error(result.message || 'Erreur lors de la désassignation');
+      }
+    } catch (error) {
+      console.error('Erreur désassignation:', error);
+      toast.error('Erreur lors de la désassignation du client');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const getClientTypeBadge = (type) => {
+    const variants = {
+      'Standard': 'info',
+      'VIP': 'warning',
+      'Influenceur': 'danger',
+      'Staff': 'success'
+    };
+    return <Badge bg={variants[type] || 'secondary'}>{type}</Badge>;
+  };
+
+  const getGenderBadge = (gender) => {
+    const variants = {
+      'Homme': 'primary',
+      'Femme': 'success'
+    };
+    return <Badge bg={variants[gender] || 'secondary'}>{gender}</Badge>;
+  };
+
+  const filteredAvailableClients = availableClients.filter(client => {
+    if (availableFilter === 'all') return true;
+    return client.clientType === availableFilter;
+  });
+
+  const filteredAssignedClients = assignedClients.filter(client => {
+    if (assignedFilter === 'all') return true;
+    return client.clientType === assignedFilter;
+  });
+
+  if (loading && !event && !hotel) {
     return (
       <Container className="text-center py-5">
-        <div className="spinner-border text-primary" role="status">
+        <div className="spinner-border" role="status">
           <span className="visually-hidden">Chargement...</span>
         </div>
       </Container>
     );
   }
 
-  if (!assignment) {
-    return (
-      <Container className="text-center py-5">
-        <div className="alert alert-danger">Assignation non trouvée</div>
-      </Container>
-    );
-  }
-
   return (
     <Container fluid>
-      {/* Header */}
+      {/* En-tête */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <div className="mb-2">
-                <Button 
-                  as={Link} 
-                  to={`/events/${eventId}/hotels`} 
-                  variant="outline-secondary" 
-                  size="sm"
-                >
-                  <FaArrowLeft className="me-1" /> Retour aux hôtels
-                </Button>
-              </div>
-              <h2>
-                <FaBed className="me-2 text-primary" />
-                {assignment.hotelId.name}
+              <Button
+                as={Link}
+                to={`/events/${eventId}/hotels`}
+                variant="outline-secondary"
+                className="mb-2"
+              >
+                <FaArrowLeft className="me-2" />
+                Retour aux assignations
+              </Button>
+              <h2 className="mb-1">
+                <FaUsers className="me-2" />
+                Assignation des clients
               </h2>
-              <p className="text-muted">
-                {assignment.eventId.name} - Assignation des clients
-              </p>
+              {event && hotel && (
+                <div className="text-muted">
+                  <div>📅 <strong>{event.name}</strong> • {event.city}, {event.country}</div>
+                  <div>🏨 <strong>{hotel.name}</strong> • {hotel.address}</div>
+                </div>
+              )}
             </div>
-            <Button 
-              variant="primary" 
-              size="lg" 
-              onClick={() => setShowAssignModal(true)}
-              disabled={availableClients.length === 0}
-            >
-              <FaUserPlus className="me-2" />
-              Assigner des clients
-            </Button>
           </div>
         </Col>
       </Row>
 
-      {/* Statistiques des chambres */}
-      <Row className="mb-4">
-        <Col>
-          <Card>
-            <Card.Header>
-              <h5 className="mb-0">Configuration des chambres</h5>
-            </Card.Header>
-            <Card.Body>
-              <Table responsive>
-                <thead>
-                  <tr>
-                    <th>Type de chambre</th>
-                    <th>Chambres disponibles</th>
-                    <th>Chambres assignées</th>
-                    <th>Capacité totale</th>
-                    <th>Places assignées</th>
-                    <th>Places libres</th>
-                    <th>Taux d'occupation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assignment.availableRooms.map((room, index) => {
-                    const totalCapacity = room.quantity * room.bedCount;
-                    const assignedCapacity = (room.assignedRooms || 0) * room.bedCount;
-                    const occupancyRate = totalCapacity > 0 ? (assignedCapacity / totalCapacity) * 100 : 0;
-                    
-                    return (
-                      <tr key={index}>
-                        <td>
-                          <Badge bg="light" text="dark" className="me-1">
-                            {room.bedCount} lits
-                          </Badge>
-                        </td>
-                        <td>{room.quantity}</td>
-                        <td className="text-primary">
-                          <strong>{room.assignedRooms || 0}</strong>
-                        </td>
-                        <td className="text-success">
-                          <strong>{totalCapacity}</strong>
-                        </td>
-                        <td className="text-info">
-                          <strong>{assignedCapacity}</strong>
-                        </td>
-                        <td className="text-warning">
-                          <strong>{totalCapacity - assignedCapacity}</strong>
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center">
-                            <div className="progress flex-grow-1 me-2" style={{height: '20px'}}>
-                              <div 
-                                className={`progress-bar ${occupancyRate >= 100 ? 'bg-danger' : occupancyRate >= 80 ? 'bg-warning' : 'bg-success'}`}
-                                style={{width: `${Math.min(occupancyRate, 100)}%`}}
-                              ></div>
-                            </div>
-                            <small>{Math.round(occupancyRate)}%</small>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* Statistiques */}
+      {hotel && (
+        <Row className="mb-4">
+          <Col>
+            <Card className="bg-light">
+              <Card.Body>
+                <Row className="text-center">
+                  <Col md={3}>
+                    <h4 className="text-primary mb-0">{hotel.totalRooms || 0}</h4>
+                    <small>Chambres totales</small>
+                  </Col>
+                  <Col md={3}>
+                    <h4 className="text-success mb-0">{assignedClients.length}</h4>
+                    <small>Clients assignés</small>
+                  </Col>
+                  <Col md={3}>
+                    <h4 className="text-info mb-0">{availableClients.length}</h4>
+                    <small>Clients disponibles</small>
+                  </Col>
+                  <Col md={3}>
+                    <h4 className="text-warning mb-0">
+                      {hotel.totalRooms ? Math.max(0, hotel.totalRooms - assignedClients.length) : '?'}
+                    </h4>
+                    <small>Places restantes</small>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
 
-      {/* Clients assignés */}
-      <Row className="mb-4">
-        <Col>
+      <Row>
+        {/* Clients disponibles */}
+        <Col md={6}>
           <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">
-                <FaUsers className="me-2" />
-                Clients assignés ({assignedClients.length})
-              </h5>
+            <Card.Header className="bg-info text-white">
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaUserPlus className="me-2" />
+                  Clients disponibles ({filteredAvailableClients.length})
+                </h5>
+                <Form.Select
+                  size="sm"
+                  value={availableFilter}
+                  onChange={(e) => setAvailableFilter(e.target.value)}
+                  style={{ width: 'auto' }}
+                >
+                  <option value="all">Tous types</option>
+                  <option value="Standard">Standard</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Influenceur">Influenceur</option>
+                  <option value="Staff">Staff</option>
+                </Form.Select>
+              </div>
             </Card.Header>
-            <Card.Body>
-              {assignedClients.length > 0 ? (
-                <Table responsive striped>
-                  <thead>
-                    <tr>
-                      <th>Client</th>
-                      <th>Type</th>
-                      <th>Sexe</th>
-                      <th>Téléphone</th>
-                      <th>Groupe</th>
-                      <th>Date d'assignation</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
+            <Card.Body className="p-0" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              {filteredAvailableClients.length > 0 ? (
+                <Table striped hover className="mb-0">
                   <tbody>
-                    {assignedClients.map(client => (
+                    {filteredAvailableClients.map(client => (
                       <tr key={client._id}>
                         <td>
-                          <strong>{client.firstName} {client.lastName}</strong>
+                          <div>
+                            <strong>{client.firstName} {client.lastName}</strong>
+                            <div className="small text-muted">
+                              📞 {client.phone}
+                              {client.groupName && (
+                                <span className="ms-2">
+                                  👥 {client.groupName} ({client.groupSize})
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td>
-                          <Badge bg={
-                            client.clientType === 'VIP' ? 'warning' :
-                            client.clientType === 'Influenceur' ? 'info' :
-                            client.clientType === 'Groupe' ? 'success' : 'secondary'
-                          }>
-                            {client.clientType}
-                          </Badge>
-                        </td>
-                        <td>{client.gender}</td>
-                        <td>{client.phone}</td>
-                        <td>{client.groupName || '-'}</td>
-                        <td>
-                          {new Date(client.updatedAt).toLocaleDateString()}
+                          {getGenderBadge(client.gender)}
                         </td>
                         <td>
-                          <Button variant="outline-danger" size="sm">
-                            Désassigner
+                          {getClientTypeBadge(client.clientType)}
+                        </td>
+                        <td>
+                          <Button
+                            size="sm"
+                            variant="outline-success"
+                            onClick={() => handleAssignClient(client)}
+                            disabled={assignmentLoading}
+                          >
+                            <FaCheck className="me-1" />
+                            Assigner
                           </Button>
                         </td>
                       </tr>
@@ -295,9 +322,94 @@ const HotelClientAssignment = () => {
                   </tbody>
                 </Table>
               ) : (
-                <div className="text-center py-4 text-muted">
-                  <FaUsers size={48} className="mb-3" />
-                  <p>Aucun client assigné à cet hôtel</p>
+                <div className="text-center py-4">
+                  <FaUsers size={48} className="text-muted mb-3" />
+                  <h6 className="text-muted">Aucun client disponible</h6>
+                  <p className="text-muted small">
+                    {availableFilter !== 'all' 
+                      ? 'Aucun client de ce type disponible'
+                      : 'Tous les clients sont déjà assignés'
+                    }
+                  </p>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Clients assignés */}
+        <Col md={6}>
+          <Card>
+            <Card.Header className="bg-success text-white">
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaHotel className="me-2" />
+                  Clients assignés ({filteredAssignedClients.length})
+                </h5>
+                <Form.Select
+                  size="sm"
+                  value={assignedFilter}
+                  onChange={(e) => setAssignedFilter(e.target.value)}
+                  style={{ width: 'auto' }}
+                >
+                  <option value="all">Tous types</option>
+                  <option value="Standard">Standard</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Influenceur">Influenceur</option>
+                  <option value="Staff">Staff</option>
+                </Form.Select>
+              </div>
+            </Card.Header>
+            <Card.Body className="p-0" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              {filteredAssignedClients.length > 0 ? (
+                <Table striped hover className="mb-0">
+                  <tbody>
+                    {filteredAssignedClients.map(client => (
+                      <tr key={client._id}>
+                        <td>
+                          <div>
+                            <strong>{client.firstName} {client.lastName}</strong>
+                            <div className="small text-muted">
+                              📞 {client.phone}
+                              {client.groupName && (
+                                <span className="ms-2">
+                                  👥 {client.groupName} ({client.groupSize})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          {getGenderBadge(client.gender)}
+                        </td>
+                        <td>
+                          {getClientTypeBadge(client.clientType)}
+                        </td>
+                        <td>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleUnassignClient(client)}
+                            disabled={assignmentLoading}
+                          >
+                            <FaTimes className="me-1" />
+                            Retirer
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : (
+                <div className="text-center py-4">
+                  <FaHotel size={48} className="text-muted mb-3" />
+                  <h6 className="text-muted">Aucun client assigné</h6>
+                  <p className="text-muted small">
+                    {assignedFilter !== 'all' 
+                      ? 'Aucun client de ce type assigné'
+                      : 'Commencez par assigner des clients à cet hôtel'
+                    }
+                  </p>
                 </div>
               )}
             </Card.Body>
@@ -305,146 +417,116 @@ const HotelClientAssignment = () => {
         </Col>
       </Row>
 
-      {/* Modal d'assignation de clients */}
-      <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} size="lg">
-        <Modal.Header closeButton>
+      {/* Modal de confirmation d'assignation */}
+      <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} centered>
+        <Modal.Header closeButton className="bg-success text-white">
           <Modal.Title>
-            <FaUserPlus className="me-2" />
-            Assigner des clients - {assignment.hotelId.name}
+            <FaCheck className="me-2" />
+            Confirmer l'assignation
           </Modal.Title>
         </Modal.Header>
-        
         <Modal.Body>
-          {/* Sélection du type de chambre */}
-          <Row className="mb-3">
-            <Col>
-              <Form.Group>
-                <Form.Label>Type de chambre *</Form.Label>
-                <Form.Select
-                  value={selectedRoom || ''}
-                  onChange={e => setSelectedRoom(e.target.value)}
-                  required
-                >
-                  <option value="">-- Choisir un type de chambre --</option>
-                  {assignment.availableRooms
-                    .filter(room => (room.quantity - (room.assignedRooms || 0)) > 0)
-                    .map((room, index) => (
-                      <option key={index} value={`${room.bedCount}_lits`}>
-                        Chambres {room.bedCount} lits 
-                        ({room.quantity - (room.assignedRooms || 0)} disponibles)
-                      </option>
-                    ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-
-          {/* Liste des clients disponibles */}
-          <Row>
-            <Col>
-              <Form.Group>
-                <Form.Label>
-                  Clients disponibles ({availableClients.length})
-                  {selectedClients.length > 0 && (
-                    <Badge bg="primary" className="ms-2">
-                      {selectedClients.length} sélectionné(s)
-                    </Badge>
-                  )}
-                </Form.Label>
-                
-                <div style={{maxHeight: '400px', overflowY: 'auto'}} className="border rounded p-2">
-                  {availableClients.length > 0 ? (
-                    availableClients.map(client => (
-                      <div 
-                        key={client._id} 
-                        className={`p-2 border-bottom cursor-pointer ${
-                          selectedClients.includes(client._id) ? 'bg-primary bg-opacity-10' : ''
-                        }`}
-                        onClick={() => handleClientSelection(client._id)}
-                        style={{cursor: 'pointer'}}
-                      >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <Form.Check
-                              type="checkbox"
-                              checked={selectedClients.includes(client._id)}
-                              onChange={() => handleClientSelection(client._id)}
-                              label=""
-                              className="me-2 d-inline"
-                            />
-                            <strong>{client.firstName} {client.lastName}</strong>
-                            <Badge bg="secondary" className="ms-2">{client.gender}</Badge>
-                            <Badge 
-                              bg={
-                                client.clientType === 'VIP' ? 'warning' :
-                                client.clientType === 'Influenceur' ? 'info' :
-                                client.clientType === 'Groupe' ? 'success' : 'light'
-                              }
-                              text={client.clientType === 'Solo' ? 'dark' : 'white'}
-                              className="ms-1"
-                            >
-                              {client.clientType}
-                            </Badge>
-                          </div>
-                          <div className="text-end">
-                            <small className="text-muted d-block">{client.phone}</small>
-                            {client.groupName && (
-                              <small className="text-info">Groupe: {client.groupName}</small>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-muted">
-                      <FaUsers size={32} className="mb-2" />
-                      <p className="mb-0">Aucun client disponible</p>
-                      <small>Tous les clients sont déjà assignés</small>
-                    </div>
-                  )}
-                </div>
-              </Form.Group>
-            </Col>
-          </Row>
-
-          {/* Informations sur l'assignation */}
-          {selectedClients.length > 0 && selectedRoom && (
-            <Row className="mt-3">
-              <Col>
-                <div className="alert alert-info">
-                  <h6>Résumé de l'assignation:</h6>
-                  <ul className="mb-0">
-                    <li><strong>{selectedClients.length}</strong> client(s) sélectionné(s)</li>
-                    <li>Type de chambre: <strong>{selectedRoom.replace('_', ' ')}</strong></li>
-                    <li>
-                      Places nécessaires: <strong>{selectedClients.length}</strong>
-                      {(() => {
-                        const bedCount = parseInt(selectedRoom.split('_')[0]);
-                        const roomsNeeded = Math.ceil(selectedClients.length / bedCount);
-                        return ` (${roomsNeeded} chambre${roomsNeeded > 1 ? 's' : ''} nécessaire${roomsNeeded > 1 ? 's' : ''})`;
-                      })()}
-                    </li>
-                  </ul>
-                </div>
-              </Col>
-            </Row>
+          {selectedClient && hotel && (
+            <div className="text-center">
+              <FaUserPlus size={48} className="text-success mb-3" />
+              <h5>Assigner ce client ?</h5>
+              <Alert variant="info" className="mt-3">
+                <div><strong>Client :</strong> {selectedClient.firstName} {selectedClient.lastName}</div>
+                <div><strong>Téléphone :</strong> {selectedClient.phone}</div>
+                <div><strong>Type :</strong> {selectedClient.clientType}</div>
+                {selectedClient.groupName && (
+                  <div><strong>Groupe :</strong> {selectedClient.groupName} ({selectedClient.groupSize} pers.)</div>
+                )}
+                <hr />
+                <div><strong>Hôtel :</strong> {hotel.name}</div>
+                <div><strong>Adresse :</strong> {hotel.address}</div>
+              </Alert>
+            </div>
           )}
         </Modal.Body>
-        
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
             Annuler
           </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleAssignClients}
-            disabled={selectedClients.length === 0 || !selectedRoom}
+          <Button
+            variant="success"
+            onClick={confirmAssignClient}
+            disabled={assignmentLoading}
           >
-            <FaUserPlus className="me-1" />
-            Assigner {selectedClients.length} client(s)
+            {assignmentLoading ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Assignation...</span>
+                </div>
+                Assignation...
+              </>
+            ) : (
+              <>
+                <FaCheck className="me-2" />
+                Confirmer l'assignation
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Modal de confirmation de désassignation */}
+      <Modal show={showUnassignModal} onHide={() => setShowUnassignModal(false)} centered>
+        <Modal.Header closeButton className="bg-danger text-white">
+          <Modal.Title>
+            <FaTimes className="me-2" />
+            Confirmer la désassignation
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedClient && hotel && (
+            <div className="text-center">
+              <FaUserMinus size={48} className="text-danger mb-3" />
+              <h5>Retirer ce client ?</h5>
+              <Alert variant="warning" className="mt-3">
+                <div><strong>Client :</strong> {selectedClient.firstName} {selectedClient.lastName}</div>
+                <div><strong>Actuellement assigné à :</strong> {hotel.name}</div>
+                <hr />
+                <p className="mb-0">
+                  <strong>⚠️ Le client sera remis en liste d'attente</strong>
+                </p>
+              </Alert>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowUnassignModal(false)}>
+            Annuler
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmUnassignClient}
+            disabled={assignmentLoading}
+          >
+            {assignmentLoading ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Désassignation...</span>
+                </div>
+                Désassignation...
+              </>
+            ) : (
+              <>
+                <FaTimes className="me-2" />
+                Confirmer la désassignation
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Alert si capacité dépassée */}
+      {hotel && assignedClients.length > hotel.totalRooms && (
+        <Alert variant="warning" className="mt-3">
+          <strong>⚠️ Attention :</strong> Le nombre de clients assignés ({assignedClients.length}) 
+          dépasse la capacité de l'hôtel ({hotel.totalRooms} chambres).
+        </Alert>
+      )}
     </Container>
   );
 };

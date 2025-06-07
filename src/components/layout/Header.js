@@ -53,15 +53,13 @@ const Header = () => {
                 </Nav.Link>
               </LinkContainer>
               
-              <NavDropdown title={<><FaBed className="me-1" />Assignations</>} id="assignments-dropdown">
-                <LinkContainer to="/assignments/current">
-                  <NavDropdown.Item>Assignations actuelles</NavDropdown.Item>
-                </LinkContainer>
-                <NavDropdown.Divider />
-                <LinkContainer to="/assignments/new">
-                  <NavDropdown.Item>Nouvelle assignation</NavDropdown.Item>
-                </LinkContainer>
-              </NavDropdown>
+              {/* 🔧 CORRIGÉ : Lien direct vers la gestion des assignations */}
+              <LinkContainer to="/assignments">
+                <Nav.Link>
+                  <FaBed className="me-1" />
+                  Assignations
+                </Nav.Link>
+              </LinkContainer>
             </Nav>
           )}
           

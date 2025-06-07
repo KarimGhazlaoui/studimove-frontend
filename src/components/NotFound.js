@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Alert, Button } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaHome, FaExclamationTriangle } from 'react-icons/fa';
 

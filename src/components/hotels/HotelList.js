@@ -7,11 +7,11 @@ import API_BASE_URL from '../../config/api';
 
 const HotelList = () => {
   const [hotels, setHotels] = useState([]);
-  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [hotelToDelete, setHotelToDelete] = useState(null);
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
     fetchData();

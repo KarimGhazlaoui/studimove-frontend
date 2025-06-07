@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Spinner } from 'react-bootstrap';
 import { useParams, Link } from 'react-router-dom';
 import { FaArrowLeft, FaEdit, FaStar, FaMapMarkerAlt } from 'react-icons/fa';
 import { hotelService } from '../services/api';
@@ -70,23 +70,45 @@ const HotelDetail = () => {
               <h5>Informations générales</h5>
               <p><strong>Catégorie:</strong> {hotel.category || 'Non spécifiée'}</p>
               <p><strong>Description:</strong> {hotel.description || 'Aucune description'}</p>
+              
+              {/* 🔧 CORRECTION : Affichage correct de l'adresse */}
               <p>
                 <FaMapMarkerAlt className="me-1" />
-                <strong>Adresse:</strong> {hotel.address}
+                <strong>Adresse:</strong> {hotel.address?.street}, {hotel.address?.city}
               </p>
-              <p><strong>Ville:</strong> {hotel.location}</p>
-              <p><strong>Pays:</strong> {hotel.country}</p>
+              <p><strong>Ville:</strong> {hotel.address?.city || hotel.location}</p>
+              <p><strong>Pays:</strong> {hotel.address?.country || hotel.country}</p>
+              {hotel.address?.zipCode && (
+                <p><strong>Code postal:</strong> {hotel.address.zipCode}</p>
+              )}
             </Card.Body>
           </Card>
 
-          {hotel.amenities && hotel.amenities.length > 0 && (
+          {/* Équipements et installations */}
+          {hotel.facilities && hotel.facilities.length > 0 && (
             <Card className="mb-4">
               <Card.Body>
-                <h5>Équipements</h5>
+                <h5>Installations</h5>
                 <div>
-                  {hotel.amenities.map((amenity, index) => (
-                    <Badge key={index} bg="light" text="dark" className="me-2 mb-2">
-                      {amenity}
+                  {hotel.facilities.map((facility, index) => (
+                    <Badge key={index} bg="info" className="me-2 mb-2">
+                      {facility}
+                    </Badge>
+                  ))}
+                </div>
+              </Card.Body>
+            </Card>
+          )}
+
+          {/* Types de chambres */}
+          {hotel.roomTypes && hotel.roomTypes.length > 0 && (
+            <Card className="mb-4">
+              <Card.Body>
+                <h5>Types de chambres</h5>
+                <div>
+                  {hotel.roomTypes.map((room, index) => (
+                    <Badge key={index} bg="success" className="me-2 mb-2">
+                      {room.type || room.name} ({room.capacity || room.bedCount} places)
                     </Badge>
                   ))}
                 </div>
@@ -99,28 +121,42 @@ const HotelDetail = () => {
           <Card>
             <Card.Body>
               <h5>Détails</h5>
+              
               {hotel.rating && (
                 <p>
                   <FaStar className="text-warning me-1" />
                   <strong>Note:</strong> {hotel.rating}/5
                 </p>
               )}
-              {hotel.pricePerNight && (
-                <p><strong>Prix/nuit:</strong> {hotel.pricePerNight}€</p>
+
+              {/* Contact */}
+              {(hotel.phone || hotel.contact?.phone) && (
+                <p><strong>Téléphone:</strong> {hotel.phone || hotel.contact.phone}</p>
               )}
-              {hotel.phone && (
-                <p><strong>Téléphone:</strong> {hotel.phone}</p>
+              
+              {(hotel.email || hotel.contact?.email) && (
+                <p><strong>Email:</strong> {hotel.email || hotel.contact.email}</p>
               )}
-              {hotel.email && (
-                <p><strong>Email:</strong> {hotel.email}</p>
-              )}
-              {hotel.website && (
-                <p><strong>Site web:</strong> 
-                  <a href={hotel.website} target="_blank" rel="noopener noreferrer">
-                    {hotel.website}
+              
+              {(hotel.website || hotel.contact?.website) && (
+                <p><strong>Site web:</strong>
+                  <a href={hotel.website || hotel.contact.website} target="_blank" rel="noopener noreferrer" className="ms-1">
+                    Visiter
                   </a>
                 </p>
               )}
+
+              {/* Statistiques */}
+              <hr />
+              <h6>Statistiques</h6>
+              <p><strong>Chambres totales:</strong> {hotel.totalRooms || 0}</p>
+              <p><strong>Capacité totale:</strong> {hotel.totalCapacity || 0} places</p>
+              <p><strong>Clients assignés:</strong> {hotel.assignedClients || 0}</p>
+              <p><strong>Statut:</strong> 
+                <Badge bg={hotel.status === 'Active' ? 'success' : 'warning'} className="ms-1">
+                  {hotel.status}
+                </Badge>
+              </p>
             </Card.Body>
           </Card>
         </Col>
