@@ -18,76 +18,33 @@ const HotelList = () => {
   }, []);
 
   // ✅ NOUVELLE APPROCHE : Récupérer d'abord tous les événements et leurs assignations
-  const fetchData = async () => {
-    try {
-      // 1. Récupérer tous les hôtels
-      const hotelsResponse = await fetch(`${API_BASE_URL}/hotels`);
-      const hotelsData = await hotelsResponse.json();
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    
+    // ✅ SIMPLE : Utiliser la route hotels corrigée
+    const response = await fetch(`${API_BASE_URL}/hotels`);
+    const data = await response.json();
+    
+    if (data.success) {
+      setHotels(data.data);
       
-      // 2. Récupérer tous les événements
+      // Récupérer aussi les événements pour le contexte
       const eventsResponse = await fetch(`${API_BASE_URL}/events`);
       const eventsData = await eventsResponse.json();
-      
-      if (hotelsData.success && eventsData.success) {
-        const allEvents = eventsData.data;
-        setEvents(allEvents);
-        
-        // 3. Pour chaque hôtel, trouver ses assignations via les événements
-        const hotelsWithEvents = await Promise.all(
-          hotelsData.data.map(async (hotel) => {
-            const linkedAssignments = [];
-            
-            // Parcourir tous les événements pour trouver les assignations de cet hôtel
-            for (const event of allEvents) {
-              try {
-                const assignmentsResponse = await fetch(`${API_BASE_URL}/assignments/event/${event._id}`);
-                const assignmentsData = await assignmentsResponse.json();
-                
-                if (assignmentsData.success && assignmentsData.data?.assignments) {
-                  // Chercher si cet hôtel est assigné à cet événement
-                  const hotelAssignments = assignmentsData.data.assignments.filter(
-                    assignment => assignment.hotelId._id === hotel._id
-                  );
-                  
-                  // Ajouter les assignations trouvées avec les infos de l'événement
-                  hotelAssignments.forEach(assignment => {
-                    linkedAssignments.push({
-                      ...assignment,
-                      eventName: event.name,
-                      eventCity: event.city,
-                      eventCountry: event.country,
-                      eventDates: {
-                        start: event.startDate,
-                        end: event.endDate
-                      }
-                    });
-                  });
-                }
-              } catch (error) {
-                console.error(`Erreur assignations événement ${event._id}:`, error);
-              }
-            }
-            
-            console.log(`🏨 Hôtel ${hotel.name} - ${linkedAssignments.length} assignations trouvées:`, linkedAssignments);
-            
-            return {
-              ...hotel,
-              linkedEvents: linkedAssignments
-            };
-          })
-        );
-        
-        setHotels(hotelsWithEvents);
-      } else {
-        toast.error('Erreur lors du chargement des données');
+      if (eventsData.success) {
+        setEvents(eventsData.data);
       }
-    } catch (error) {
-      console.error('Erreur fetch data:', error);
-      toast.error('Erreur de connexion');
-    } finally {
-      setLoading(false);
+    } else {
+      toast.error('Erreur lors du chargement des hôtels');
     }
-  };
+  } catch (error) {
+    console.error('Erreur fetch hotels:', error);
+    toast.error('Erreur de connexion');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteHotel = async () => {
     if (!hotelToDelete) return;

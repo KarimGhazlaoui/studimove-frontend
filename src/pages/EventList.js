@@ -13,61 +13,44 @@ const EventList = () => {
     fetchEvents();
   }, []);
 
-  // ✅ VERSION DEBUG - Remplacez la fonction getEventStats par ceci :
-  const getEventStats = async (eventId) => {
-    try {
-      console.log(`🔍 Récupération des stats pour événement: ${eventId}`);
-      
-      const response = await fetch(`${API_BASE_URL}/assignments/event/${eventId}`);
-      const data = await response.json();
-      
-      console.log(`📊 Réponse API assignments:`, data);
-      
-      if (data.success) {
-        // ✅ Gestion de différents formats de données
-        let assignments = [];
-        
-        if (Array.isArray(data.data)) {
-          assignments = data.data;
-          console.log(`✅ Format 1: data.data est un array de ${assignments.length} éléments`);
-        } else if (data.data && Array.isArray(data.data.assignments)) {
-          assignments = data.data.assignments;
-          console.log(`✅ Format 2: data.data.assignments est un array de ${assignments.length} éléments`);
-        } else if (data.data && Array.isArray(data.data.hotels)) {
-          assignments = data.data.hotels;
-          console.log(`✅ Format 3: data.data.hotels est un array de ${assignments.length} éléments`);
-        } else {
-          console.log(`❌ Format non reconnu:`, typeof data.data, data.data);
-          return { totalHotels: 0, totalRooms: 0, totalCapacity: 0 };
-        }
-        
-        console.log(`📋 Assignations trouvées:`, assignments);
-        
-        const stats = {
-          totalHotels: assignments.length,
-          totalRooms: assignments.reduce((sum, assignment) => {
-            const roomCount = assignment.availableRooms?.reduce((roomSum, room) => 
-              roomSum + (room.quantity || 0), 0) || 0;
-            return sum + roomCount;
-          }, 0),
-          totalCapacity: assignments.reduce((sum, assignment) => {
-            const capacity = assignment.availableRooms?.reduce((capSum, room) => 
-              capSum + ((room.quantity || 0) * (room.bedCount || 0)), 0) || 0;
-            return sum + capacity;
-          }, 0)
-        };
-        
-        console.log(`📈 Stats calculées:`, stats);
-        return stats;
-      } else {
-        console.log(`❌ API retourné success: false`, data);
-      }
-    } catch (error) {
-      console.error(`❌ Erreur stats événement ${eventId}:`, error);
-    }
+  // ✅ REMPLACER la fonction getEventStats par :
+const getEventStats = async (eventId) => {
+  try {
+    console.log(`🔍 Récupération des stats pour événement: ${eventId}`);
     
-    return { totalHotels: 0, totalRooms: 0, totalCapacity: 0 };
-  };
+    // ✅ UTILISER l'API /hotels au lieu de /assignments
+    const response = await fetch(`${API_BASE_URL}/hotels?eventId=${eventId}`);
+    const data = await response.json();
+    
+    console.log(`📊 Réponse API hotels:`, data);
+    
+    if (data.success && Array.isArray(data.data)) {
+      const hotels = data.data;
+      
+      console.log(`📋 ${hotels.length} hôtels trouvés`);
+      
+      // ✅ UTILISER les assignmentDetails pour les capacités
+      const stats = {
+        totalHotels: hotels.length,
+        totalRooms: hotels.reduce((sum, hotel) => {
+          const rooms = hotel.assignmentDetails?.availableRooms || [];
+          return sum + rooms.reduce((roomSum, room) => roomSum + (room.quantity || 0), 0);
+        }, 0),
+        totalCapacity: hotels.reduce((sum, hotel) => 
+          sum + (hotel.assignmentDetails?.totalCapacity || 0), 0)
+      };
+      
+      console.log(`📈 Stats calculées:`, stats);
+      return stats;
+    } else {
+      console.log(`❌ Pas de données`, data);
+    }
+  } catch (error) {
+    console.error(`❌ Erreur stats événement ${eventId}:`, error);
+  }
+  
+  return { totalHotels: 0, totalRooms: 0, totalCapacity: 0 };
+};
 
   const fetchEvents = async () => {
     try {
@@ -211,16 +194,25 @@ const EventList = () => {
                   </span>
                 </div>
 
-                {/* ✅ HÔTELS CORRIGÉS */}
+
+                {/* ✅ HÔTELS AVEC CHAMBRES ET PLACES */}
                 <div className="mb-3">
                   <p className="mb-1">
                     <FaHotel className="me-2 text-muted" />
                     <strong>Hôtels:</strong> <span className="text-info">{event.totalHotels}</span>
                   </p>
                   {event.totalCapacity > 0 && (
-                    <small className="text-muted">
-                      {event.totalCapacity} places disponibles
-                    </small>
+
+
+
+                    <div>
+                      <small className="text-muted d-block">
+                        🏠 {event.totalRooms} chambres disponibles
+                      </small>
+                      <small className="text-muted d-block">
+                        👥 {event.totalCapacity} places disponibles
+                      </small>
+                    </div>
                   )}
                 </div>
 

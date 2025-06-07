@@ -7,14 +7,18 @@ import API_BASE_URL from '../config/api';
 
 const EventHotelAssignments = () => {
   const { eventId } = useParams();
+  
+  // 🆕 LOG DE TEST BASIQUE
+  console.log('🚀 EventHotelAssignments chargé, eventId:', eventId);
+  console.log('🔗 API_BASE_URL:', API_BASE_URL);
+  
   const [data, setData] = useState(null);
   const [availableHotels, setAvailableHotels] = useState([]);
-  const [eventInfo, setEventInfo] = useState(null); // 🆕 Ajouter les infos de l'événement
+  const [eventInfo, setEventInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-
   const [assignForm, setAssignForm] = useState({
     hotelId: '',
     availableRooms: [
@@ -24,17 +28,27 @@ const EventHotelAssignments = () => {
   });
 
   useEffect(() => {
+    console.log('🔄 useEffect déclenché avec eventId:', eventId); // 🆕 AJOUT
     fetchAssignments();
     fetchAvailableHotels();
   }, [eventId]);
 
   const fetchAssignments = async () => {
+    console.log('⚡ fetchAssignments DÉMARRÉ');
     try {
+      const url = `${API_BASE_URL}/assignments/event/${eventId}`;
+      console.log('🌐 URL appelée:', url);
       const response = await fetch(`${API_BASE_URL}/assignments/event/${eventId}`);
+      console.log('📡 Réponse reçue, status:', response.status);
       const result = await response.json();
       
+      console.log('📋 Assignations reçues:', result); // Debug
+      console.log('🔍 Première assignation détaillée:', result.data?.[0]);
+      console.log('🏠 LogicalRooms:', result.data?.[0]?.logicalRooms);
+      console.log('📊 Stats:', result.data?.[0]?.stats);
+      
       if (result.success) {
-        setData(result.data);
+        setData(result.data); // ✅ result.data est directement le tableau
       } else {
         toast.error('Erreur lors du chargement des assignations');
       }
@@ -53,7 +67,7 @@ const EventHotelAssignments = () => {
       
       if (result.success) {
         setAvailableHotels(result.data);
-        setEventInfo(result.event); // 🆕 Stocker les infos de l'événement
+        setEventInfo(result.event);
       }
     } catch (error) {
       console.error('Erreur fetch available hotels:', error);
@@ -85,7 +99,6 @@ const EventHotelAssignments = () => {
       });
 
       const result = await response.json();
-
       if (result.success) {
         toast.success('Hôtel assigné avec succès');
         setShowAssignModal(false);
@@ -105,19 +118,18 @@ const EventHotelAssignments = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch(`${API_BASE_URL}/assignments/${selectedAssignment._id}`, {
+      const response = await fetch(`${API_BASE_URL}/assignments/${selectedAssignment.assignmentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          availableRooms: selectedAssignment.availableRooms,
+          availableRooms: selectedAssignment.logicalRooms, // ✅ Utiliser logicalRooms
           notes: selectedAssignment.notes
         })
       });
 
       const result = await response.json();
-
       if (result.success) {
         toast.success('Assignation mise à jour avec succès');
         setShowEditModal(false);
@@ -141,7 +153,6 @@ const EventHotelAssignments = () => {
       });
 
       const result = await response.json();
-
       if (result.success) {
         toast.success('Assignation supprimée avec succès');
         fetchAssignments();
@@ -172,7 +183,7 @@ const EventHotelAssignments = () => {
     if (isEdit && selectedAssignment) {
       setSelectedAssignment(prev => ({
         ...prev,
-        availableRooms: [...prev.availableRooms, { ...newRoom, assignedRooms: 0 }]
+        logicalRooms: [...(prev.logicalRooms || []), { ...newRoom, assignedRooms: 0 }]
       }));
     } else {
       setAssignForm(prev => ({
@@ -186,7 +197,7 @@ const EventHotelAssignments = () => {
     if (isEdit && selectedAssignment) {
       setSelectedAssignment(prev => ({
         ...prev,
-        availableRooms: prev.availableRooms.filter((_, i) => i !== index)
+        logicalRooms: (prev.logicalRooms || []).filter((_, i) => i !== index)
       }));
     } else {
       setAssignForm(prev => ({
@@ -200,7 +211,7 @@ const EventHotelAssignments = () => {
     if (isEdit && selectedAssignment) {
       setSelectedAssignment(prev => ({
         ...prev,
-        availableRooms: prev.availableRooms.map((room, i) =>
+        logicalRooms: (prev.logicalRooms || []).map((room, i) =>
           i === index ? { ...room, [field]: value } : room
         )
       }));
@@ -215,14 +226,20 @@ const EventHotelAssignments = () => {
   };
 
   const calculateOccupancyRate = (assignment) => {
-    const totalCapacity = assignment.availableRooms?.reduce((sum, room) =>
-      sum + (room.quantity * room.bedCount), 0) || 0;
-    const totalAssigned = assignment.availableRooms?.reduce((sum, room) =>
-      sum + ((room.assignedRooms || 0) * room.bedCount), 0) || 0;
+    const totalCapacity = assignment.stats?.totalCapacity || 0;
+    const totalAssigned = assignment.stats?.totalAssigned || 0;
     
     if (totalCapacity === 0) return 0;
     return Math.round((totalAssigned / totalCapacity) * 100);
   };
+
+  // ✅ Calculer les stats globales depuis les assignations individuelles
+  const globalStats = data ? {
+    totalHotels: data.length,
+    totalCapacity: data.reduce((sum, assignment) => sum + (assignment.stats?.totalCapacity || 0), 0),
+    totalAssigned: data.reduce((sum, assignment) => sum + (assignment.stats?.totalAssigned || 0), 0),
+    get availableCapacity() { return this.totalCapacity - this.totalAssigned; }
+  } : null;
 
   if (loading) {
     return (
@@ -251,11 +268,10 @@ const EventHotelAssignments = () => {
                 Hôtels assignés
               </h2>
               <p className="text-muted">
-                {/* 🆕 Solution sécurisée pour éviter l'erreur */}
                 {eventInfo ? (
                   `${eventInfo.name} - ${eventInfo.city}, ${eventInfo.country}`
-                ) : data?.assignments?.length > 0 ? (
-                  `${data.assignments[0].eventId.name} - ${data.assignments[0].eventId.city}, ${data.assignments[0].eventId.country}`
+                ) : data?.length > 0 && data[0].hotel ? (
+                  `Événement - ${data[0].hotel.address?.city || 'Ville inconnue'}`
                 ) : (
                   'Chargement des informations de l\'événement...'
                 )}
@@ -274,13 +290,13 @@ const EventHotelAssignments = () => {
         </Col>
       </Row>
 
-      {/* Statistiques */}
-      {data?.stats && (
+      {/* ✅ Statistiques corrigées */}
+      {globalStats && (
         <Row className="mb-4">
           <Col md={3}>
             <Card className="text-center border-primary">
               <Card.Body>
-                <h3 className="text-primary">{data.stats.totalHotels}</h3>
+                <h3 className="text-primary">{globalStats.totalHotels}</h3>
                 <p className="mb-0">Hôtels assignés</p>
               </Card.Body>
             </Card>
@@ -288,7 +304,7 @@ const EventHotelAssignments = () => {
           <Col md={3}>
             <Card className="text-center border-success">
               <Card.Body>
-                <h3 className="text-success">{data.stats.totalCapacity}</h3>
+                <h3 className="text-success">{globalStats.totalCapacity}</h3>
                 <p className="mb-0">Places totales</p>
               </Card.Body>
             </Card>
@@ -296,7 +312,7 @@ const EventHotelAssignments = () => {
           <Col md={3}>
             <Card className="text-center border-info">
               <Card.Body>
-                <h3 className="text-info">{data.stats.totalAssigned}</h3>
+                <h3 className="text-info">{globalStats.totalAssigned}</h3>
                 <p className="mb-0">Places assignées</p>
               </Card.Body>
             </Card>
@@ -304,7 +320,7 @@ const EventHotelAssignments = () => {
           <Col md={3}>
             <Card className="text-center border-warning">
               <Card.Body>
-                <h3 className="text-warning">{data.stats.availableCapacity}</h3>
+                <h3 className="text-warning">{globalStats.availableCapacity}</h3>
                 <p className="mb-0">Places disponibles</p>
               </Card.Body>
             </Card>
@@ -312,24 +328,24 @@ const EventHotelAssignments = () => {
         </Row>
       )}
 
-      {/* Alerte si pas d'hôtels disponibles */}
-      {availableHotels.length === 0 && data?.assignments?.length > 0 && (
+      {/* ✅ Alerte corrigée */}
+      {availableHotels.length === 0 && data?.length > 0 && (
         <Alert variant="info" className="mb-4">
           <strong>Info:</strong> Tous les hôtels disponibles sont déjà assignés à cet événement.
         </Alert>
       )}
 
-      {/* Liste des assignations */}
+      {/* ✅ Liste des assignations corrigée */}
       <Row>
-        {data?.assignments?.map(assignment => (
-          <Col key={assignment._id} lg={6} className="mb-4">
+        {data?.map(assignment => (
+          <Col key={assignment.assignmentId} lg={6} className="mb-4">
             <Card className="h-100 shadow-sm">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h5 className="mb-0">{assignment.hotelId.name}</h5>
+                  <h5 className="mb-0">{assignment.hotel.name}</h5>
                   <small className="text-muted">
                     <FaMapMarkerAlt className="me-1" />
-                    {assignment.hotelId.address.city}
+                    {assignment.hotel.address?.city || 'Ville inconnue'}
                   </small>
                 </div>
                 <div className="d-flex align-items-center">
@@ -340,7 +356,7 @@ const EventHotelAssignments = () => {
                     {[...Array(5)].map((_, i) => (
                       <FaStar
                         key={i}
-                        className={i < assignment.hotelId.rating ? 'text-warning' : 'text-muted'}
+                        className={i < (assignment.hotel.rating || 0) ? 'text-warning' : 'text-muted'}
                         size="0.8em"
                       />
                     ))}
@@ -361,7 +377,7 @@ const EventHotelAssignments = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {assignment.availableRooms.map((room, idx) => (
+                      {assignment.logicalRooms?.map((room, idx) => (
                         <tr key={idx}>
                           <td>
                             <Badge bg="light" text="dark">
@@ -374,22 +390,26 @@ const EventHotelAssignments = () => {
                             {room.quantity * room.bedCount} places
                           </td>
                         </tr>
-                      ))}
+                      )) || (
+                        <tr>
+                          <td colSpan="4" className="text-center text-muted">
+                            Aucune configuration de chambre
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </Table>
                 </div>
-
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
                     <strong>Total: </strong>
-                    <span className="text-success">{assignment.totalCapacity} places</span>
+                    <span className="text-success">{assignment.stats?.totalCapacity || 0} places</span>
                     <br />
                     <small className="text-muted">
                       Taux d'occupation: {calculateOccupancyRate(assignment)}%
                     </small>
                   </div>
                 </div>
-
                 {assignment.notes && (
                   <div className="mt-2">
                     <small className="text-muted">
@@ -398,7 +418,6 @@ const EventHotelAssignments = () => {
                   </div>
                 )}
               </Card.Body>
-
               <Card.Footer>
                 <div className="d-flex gap-2">
                   <Button
@@ -418,7 +437,7 @@ const EventHotelAssignments = () => {
                     size="sm"
                     className="flex-fill"
                     as={Link}
-                    to={`/assignments/${eventId}/hotel/${assignment._id}`}
+                    to={`/assignments/${eventId}/hotel/${assignment.assignmentId}`}
                   >
                     <FaBed className="me-1" />
                     Clients
@@ -426,7 +445,7 @@ const EventHotelAssignments = () => {
                   <Button
                     variant="outline-danger"
                     size="sm"
-                    onClick={() => handleDeleteAssignment(assignment._id)}
+                    onClick={() => handleDeleteAssignment(assignment.assignmentId)}
                   >
                     <FaTrash />
                   </Button>
@@ -437,8 +456,8 @@ const EventHotelAssignments = () => {
         ))}
       </Row>
 
-      {/* Message si aucune assignation */}
-      {data?.assignments?.length === 0 && (
+      {/* ✅ Message si aucune assignation corrigé */}
+      {data?.length === 0 && (
         <Row>
           <Col className="text-center py-5">
             <FaHotel size={64} className="text-muted mb-3" />
@@ -483,7 +502,7 @@ const EventHotelAssignments = () => {
                     <option value="">-- Choisir un hôtel --</option>
                     {availableHotels.map(hotel => (
                       <option key={hotel._id} value={hotel._id}>
-                        {hotel.name} - {hotel.address.city}
+                        {hotel.name} - {hotel.address?.city || 'Ville inconnue'}
                         {hotel.rating > 0 && ` (${hotel.rating}⭐)`}
                       </option>
                     ))}
@@ -509,7 +528,6 @@ const EventHotelAssignments = () => {
                   Ajouter un pack
                 </Button>
               </div>
-
               {assignForm.availableRooms.map((room, index) => (
                 <Card key={index} className="mb-2">
                   <Card.Body className="py-2">
@@ -578,7 +596,6 @@ const EventHotelAssignments = () => {
                   </Card.Body>
                 </Card>
               ))}
-
               {/* Résumé total */}
               <Alert variant="info" className="mt-2">
                 <strong>Résumé:</strong> {' '}
@@ -616,13 +633,13 @@ const EventHotelAssignments = () => {
         </Form>
       </Modal>
 
-      {/* Modal de modification d'assignation */}
+      {/* ✅ Modal de modification d'assignation corrigé */}
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
         <Form onSubmit={handleUpdateAssignment}>
           <Modal.Header closeButton>
             <Modal.Title>
               <FaEdit className="me-2" />
-              Modifier l'assignation - {selectedAssignment?.hotelId?.name}
+              Modifier l'assignation - {selectedAssignment?.hotel?.name}
             </Modal.Title>
           </Modal.Header>
           
@@ -646,8 +663,7 @@ const EventHotelAssignments = () => {
                       Ajouter un pack
                     </Button>
                   </div>
-
-                  {selectedAssignment.availableRooms.map((room, index) => (
+                  {(selectedAssignment.logicalRooms || []).map((room, index) => (
                     <Card key={index} className="mb-2">
                       <Card.Body className="py-2">
                         <Row className="align-items-center">
@@ -716,7 +732,7 @@ const EventHotelAssignments = () => {
                             </div>
                           </Col>
                           <Col md={2}>
-                            {selectedAssignment.availableRooms.length > 1 && (
+                            {(selectedAssignment.logicalRooms || []).length > 1 && (
                               <Button
                                 type="button"
                                 variant="outline-danger"
@@ -731,19 +747,18 @@ const EventHotelAssignments = () => {
                       </Card.Body>
                     </Card>
                   ))}
-
                   {/* Résumé de modification */}
                   <Alert variant="info" className="mt-2">
                     <Row>
                       <Col md={6}>
-                        <strong>Total chambres:</strong> {selectedAssignment.availableRooms.reduce((sum, room) => sum + room.quantity, 0)}
+                        <strong>Total chambres:</strong> {(selectedAssignment.logicalRooms || []).reduce((sum, room) => sum + room.quantity, 0)}
                         <br />
-                        <strong>Capacité totale:</strong> {selectedAssignment.availableRooms.reduce((sum, room) => sum + (room.quantity * room.bedCount), 0)} places
+                        <strong>Capacité totale:</strong> {(selectedAssignment.logicalRooms || []).reduce((sum, room) => sum + (room.quantity * room.bedCount), 0)} places
                       </Col>
                       <Col md={6}>
-                        <strong>Chambres assignées:</strong> {selectedAssignment.availableRooms.reduce((sum, room) => sum + (room.assignedRooms || 0), 0)}
+                        <strong>Chambres assignées:</strong> {(selectedAssignment.logicalRooms || []).reduce((sum, room) => sum + (room.assignedRooms || 0), 0)}
                         <br />
-                        <strong>Places assignées:</strong> {selectedAssignment.availableRooms.reduce((sum, room) => sum + ((room.assignedRooms || 0) * room.bedCount), 0)} places
+                        <strong>Places assignées:</strong> {(selectedAssignment.logicalRooms || []).reduce((sum, room) => sum + ((room.assignedRooms || 0) * room.bedCount), 0)} places
                       </Col>
                     </Row>
                   </Alert>
